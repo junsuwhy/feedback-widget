@@ -1,0 +1,2140 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>feedback-widget 規格與策略（草案 v0.1）</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-alt: #f1f5f9;
+      --surface-code: #0f172a;
+      --code-text: #e2e8f0;
+      --code-header: #1e293b;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --accent-border: #bfdbfe;
+      --accent-2: #0d9488;
+      --accent-2-soft: #f0fdfa;
+      --accent-2-border: #99f6e4;
+      --warn-bg: #fffbeb;
+      --warn-border: #fde68a;
+      --warn-text: #92400e;
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+      --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.06);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0b1120;
+        --surface: #111827;
+        --surface-alt: #1e293b;
+        --surface-code: #090e1a;
+        --code-text: #e2e8f0;
+        --code-header: #162032;
+        --text: #f1f5f9;
+        --text-muted: #94a3b8;
+        --border: #1f2937;
+        --border-strong: #334155;
+        --accent: #60a5fa;
+        --accent-soft: rgba(37, 99, 235, 0.14);
+        --accent-border: rgba(96, 165, 250, 0.35);
+        --accent-2: #2dd4bf;
+        --accent-2-soft: rgba(13, 148, 136, 0.14);
+        --accent-2-border: rgba(45, 212, 191, 0.35);
+        --warn-bg: rgba(245, 158, 11, 0.12);
+        --warn-border: rgba(251, 191, 36, 0.35);
+        --warn-text: #fcd34d;
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+        --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.4);
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #0b1120;
+      --surface: #111827;
+      --surface-alt: #1e293b;
+      --surface-code: #090e1a;
+      --code-text: #e2e8f0;
+      --code-header: #162032;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border: #1f2937;
+      --border-strong: #334155;
+      --accent: #60a5fa;
+      --accent-soft: rgba(37, 99, 235, 0.14);
+      --accent-border: rgba(96, 165, 250, 0.35);
+      --accent-2: #2dd4bf;
+      --accent-2-soft: rgba(13, 148, 136, 0.14);
+      --accent-2-border: rgba(45, 212, 191, 0.35);
+      --warn-bg: rgba(245, 158, 11, 0.12);
+      --warn-border: rgba(251, 191, 36, 0.35);
+      --warn-text: #fcd34d;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+      --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      font-size: 16px;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.875em;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      padding: 0.12em 0.4em;
+      border-radius: 5px;
+      word-break: break-word;
+    }
+
+    pre {
+      margin: 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      font-family: var(--font-mono);
+      font-size: 0.86rem;
+      line-height: 1.6;
+    }
+
+    pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
+      word-break: normal;
+    }
+
+    /* Top bar */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: color-mix(in srgb, var(--surface) 88%, transparent);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0.7rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text);
+    }
+
+    .brand-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-soft);
+      flex-shrink: 0;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid var(--accent-border);
+      white-space: nowrap;
+    }
+
+    .badge-teal {
+      background: var(--accent-2-soft);
+      color: var(--accent-2);
+      border-color: var(--accent-2-border);
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-ghost {
+      appearance: none;
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 0.35rem 0.7rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .btn-ghost:hover {
+      background: var(--surface-alt);
+      border-color: var(--accent);
+    }
+
+    .mobile-toc-btn {
+      display: none;
+    }
+
+    /* Container */
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1.75rem 1.25rem 4rem;
+    }
+
+    /* Hero / Top Summary */
+    .hero {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: var(--shadow-md);
+      margin-bottom: 1.75rem;
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.85rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .hero h1 {
+      margin: 0 0 0.75rem;
+      font-size: clamp(1.65rem, 3vw, 2.35rem);
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-lead {
+      font-size: 1.08rem;
+      color: var(--text-muted);
+      margin: 0 0 1.5rem;
+      max-width: 78ch;
+    }
+
+    .flow-steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.85rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .flow-step {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.95rem 1rem;
+    }
+
+    .flow-step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #ffffff;
+      font-size: 0.78rem;
+      font-weight: 700;
+      margin-bottom: 0.45rem;
+    }
+
+    .flow-step h3 {
+      margin: 0 0 0.25rem;
+      font-size: 0.95rem;
+    }
+
+    .flow-step p {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .mode-card {
+      border-radius: var(--radius);
+      padding: 1.15rem 1.25rem;
+      border: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .mode-card.relay {
+      border-top: 3px solid var(--accent);
+    }
+
+    .mode-card.embedded {
+      border-top: 3px solid var(--accent-2);
+    }
+
+    .mode-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.55rem;
+    }
+
+    .mode-card h3 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .mode-card ul {
+      margin: 0.4rem 0 0;
+      padding-left: 1.2rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .mode-card li {
+      margin-bottom: 0.25rem;
+    }
+
+    .callout {
+      margin-top: 1.25rem;
+      padding: 0.85rem 1.05rem;
+      border-radius: var(--radius-sm);
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      color: var(--warn-text);
+      font-size: 0.88rem;
+    }
+
+    /* Architecture Diagrams Section */
+    .arch-section {
+      margin-bottom: 2rem;
+    }
+
+    .arch-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .arch-header h2 {
+      margin: 0;
+      font-size: 1.35rem;
+    }
+
+    .arch-header p {
+      margin: 0;
+      font-size: 0.92rem;
+      color: var(--text-muted);
+    }
+
+    .diagram-stack {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+    }
+
+    .diagram-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .diagram-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.85rem;
+      flex-wrap: wrap;
+    }
+
+    .diagram-title h3 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .svg-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem;
+    }
+
+    .svg-wrap svg {
+      display: block;
+      width: 100%;
+      min-width: 640px;
+      height: auto;
+    }
+
+    /* Main 2-column Layout: Sidebar TOC + Chapters */
+    .layout {
+      display: grid;
+      grid-template-columns: 250px minmax(0, 1fr);
+      gap: 2rem;
+      align-items: start;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 4.4rem;
+      max-height: calc(100vh - 5.5rem);
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .sidebar-title {
+      font-size: 0.76rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin: 0 0 0.65rem 0.5rem;
+    }
+
+    .toc-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .toc-list li {
+      margin-bottom: 0.12rem;
+    }
+
+    .toc-list a {
+      display: flex;
+      align-items: baseline;
+      gap: 0.45rem;
+      padding: 0.36rem 0.55rem;
+      border-radius: 7px;
+      font-size: 0.86rem;
+      color: var(--text-muted);
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .toc-list a:hover {
+      background: var(--surface-alt);
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .toc-list a.active {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .toc-num {
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      opacity: 0.75;
+      min-width: 1.5rem;
+    }
+
+    /* Chapters */
+    .content {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .chapter {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.65rem 1.85rem;
+      box-shadow: var(--shadow-sm);
+      scroll-margin-top: 4.6rem;
+    }
+
+    .chapter-head {
+      display: flex;
+      align-items: baseline;
+      gap: 0.65rem;
+      padding-bottom: 0.75rem;
+      margin-bottom: 1.1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .chapter-sec {
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid var(--accent-border);
+      padding: 0.1rem 0.48rem;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    .chapter h2 {
+      margin: 0;
+      font-size: 1.32rem;
+      line-height: 1.35;
+    }
+
+    .chapter h3 {
+      margin: 1.35rem 0 0.55rem;
+      font-size: 1.05rem;
+      color: var(--text);
+    }
+
+    .chapter p {
+      margin: 0 0 0.85rem;
+    }
+
+    .chapter ul, .chapter ol {
+      margin: 0 0 1rem;
+      padding-left: 1.35rem;
+    }
+
+    .chapter li {
+      margin-bottom: 0.35rem;
+    }
+
+    .chapter > :last-child {
+      margin-bottom: 0;
+    }
+
+    /* Tables */
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 0.9rem 0 1.15rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      min-width: 520px;
+    }
+
+    thead {
+      background: var(--surface-alt);
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:hover {
+      background: color-mix(in srgb, var(--surface-alt) 55%, transparent);
+    }
+
+    /* Code blocks */
+    .code-block {
+      margin: 0.85rem 0 1.15rem;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      border: 1px solid var(--border-strong);
+      background: var(--surface-code);
+      color: var(--code-text);
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.42rem 0.85rem;
+      background: var(--code-header);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      color: #94a3b8;
+    }
+
+    .copy-btn {
+      appearance: none;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
+      font-family: var(--font-sans);
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 0.2rem 0.58rem;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(148, 163, 184, 0.55);
+    }
+
+    .copy-btn.copied {
+      background: rgba(16, 185, 129, 0.22);
+      border-color: rgba(52, 211, 153, 0.6);
+      color: #6ee7b7;
+    }
+
+    .code-block pre {
+      padding: 0.95rem 1.05rem;
+    }
+
+    /* Key-value two-col cards */
+    .split-cards {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+      margin: 0.85rem 0 1rem;
+    }
+
+    .sub-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 1rem 1.1rem;
+    }
+
+    .sub-card h4 {
+      margin: 0 0 0.45rem;
+      font-size: 0.95rem;
+    }
+
+    .sub-card p, .sub-card ul {
+      margin: 0;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    .sub-card ul {
+      padding-left: 1.15rem;
+    }
+
+    /* Checklist */
+    .checklist {
+      list-style: none;
+      padding-left: 0 !important;
+    }
+
+    .checklist li {
+      position: relative;
+      padding: 0.65rem 0.85rem 0.65rem 2.2rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 0.55rem;
+      font-size: 0.92rem;
+    }
+
+    .checklist li::before {
+      content: "☐";
+      position: absolute;
+      left: 0.8rem;
+      top: 0.62rem;
+      color: var(--accent);
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .footer {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1.25rem 1.25rem 2.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .flow-steps {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+      }
+
+      .mobile-toc-btn {
+        display: inline-flex;
+      }
+
+      .sidebar {
+        position: static;
+        max-height: none;
+        display: none;
+      }
+
+      .sidebar.open {
+        display: block;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .container {
+        padding: 1rem 0.85rem 3rem;
+      }
+
+      .hero {
+        padding: 1.25rem;
+      }
+
+      .flow-steps,
+      .mode-grid,
+      .split-cards {
+        grid-template-columns: 1fr;
+      }
+
+      .chapter {
+        padding: 1.2rem 1.05rem;
+      }
+
+      .diagram-card {
+        padding: 1rem;
+      }
+
+      .topbar-inner {
+        padding: 0.6rem 0.85rem;
+      }
+
+      .badge.hide-sm {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-dot" aria-hidden="true"></span>
+        <span>feedback-widget</span>
+        <span class="badge hide-sm">草案 v0.1</span>
+      </div>
+      <div class="topbar-actions">
+        <button type="button" class="btn-ghost mobile-toc-btn" id="tocToggle" aria-expanded="false" aria-controls="sidebarToc">目錄</button>
+        <button type="button" class="btn-ghost" id="themeToggle" title="切換亮色／暗色主題">主題：自動</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- 頂部摘要 -->
+    <section class="hero" id="summary">
+      <div class="hero-meta">
+        <span class="badge">草案 v0.1（2026-11-23）</span>
+        <span>尚未動工，本文件是開發前的共識紀錄</span>
+      </div>
+      <h1>feedback-widget 規格與策略</h1>
+      <p class="hero-lead">
+        讓有管理權限的成員在任何頁面「<strong>看到問題 → 截圖標註 → 一鍵開 GitHub issue</strong>」。widget 與宿主低耦合、不重造輪子、金鑰不進瀏覽器，以同一份 HTTP 規格與 conformance 測試資料驅動多套實作。
+      </p>
+
+      <div class="flow-steps" aria-label="核心使用流程">
+        <div class="flow-step">
+          <span class="flow-step-num">1</span>
+          <h3>浮動按鈕</h3>
+          <p>管理員登入後，頁面右下角出現浮動小圓按鈕。</p>
+        </div>
+        <div class="flow-step">
+          <span class="flow-step-num">2</span>
+          <h3>擷取畫面</h3>
+          <p>按下後擷取目前頁面畫面，開啟光箱。</p>
+        </div>
+        <div class="flow-step">
+          <span class="flow-step-num">3</span>
+          <h3>標註填單</h3>
+          <p>畫線、螢光筆、箭頭、文字、框線、塗黑，並填寫標題、描述、類型。</p>
+        </div>
+        <div class="flow-step">
+          <span class="flow-step-num">4</span>
+          <h3>開立 Issue</h3>
+          <p>送出後在指定 repo 開一張 GitHub issue，內含圖片、回報人、頁面網址與環境資料。</p>
+        </div>
+      </div>
+
+      <div class="mode-grid" aria-label="兩種部署模式摘要">
+        <div class="mode-card relay">
+          <div class="mode-card-header">
+            <h3>中繼模式（relay mode）</h3>
+            <span class="badge">Bearer JWT（HS256）</span>
+          </div>
+          <ul>
+            <li>獨立 Rust 中繼服務（<code>axum</code>，Docker 部署），集中管理圖片與 GitHub 憑證。</li>
+            <li>宿主站透過 framework package 判斷管理員、輸出 <code>&lt;script&gt;</code> 並簽發短效 HS256 token。</li>
+            <li>適合多個站共用，或想直接以 relay 作為自架圖床（<code>local</code> driver 公開網址）。</li>
+          </ul>
+        </div>
+        <div class="mode-card embedded">
+          <div class="mode-card-header">
+            <h3>內嵌模式（embedded mode）</h3>
+            <span class="badge badge-teal">Session + CSRF</span>
+          </div>
+          <ul>
+            <li>由宿主站內的 framework package（例如 <code>php/laravel</code>）直接提供同規格端點。</li>
+            <li>沿用宿主 session 判斷管理員與 CSRF 驗證，透過 <code>php/core</code>（或 <code>relay/core</code>）上傳圖片與開單。</li>
+            <li>適合單一站、不想多維護一個服務的情境；送出紀錄存宿主資料庫。</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>佔位網域說明：</strong>本規格使用 <code>feedback.example-studio.tw</code> 與宿主站 <code>www.example-studio.tw</code> 作為範例，部署時再替換。兩種部署模式下，<strong>widget 打的 HTTP 規格完全相同</strong>，只差 endpoint 與驗證方式。
+      </div>
+    </section>
+
+    <!-- 架構圖（Inline SVG） -->
+    <section class="arch-section" id="architecture">
+      <div class="arch-header">
+        <h2>架構流程圖</h2>
+        <p>中繼模式與內嵌模式共用同一套 widget 與 HTTP 介面</p>
+      </div>
+
+      <div class="diagram-stack">
+        <!-- SVG 1: 中繼模式 -->
+        <div class="diagram-card">
+          <div class="diagram-title">
+            <h3>中繼模式（relay mode）</h3>
+            <span class="badge">多站共用 · 集中管理憑證與圖床</span>
+          </div>
+          <div class="svg-wrap">
+            <svg viewBox="0 0 880 330" role="img" aria-label="中繼模式架構流程圖" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="arrow-relay-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--accent)" />
+                </marker>
+                <marker id="arrow-relay-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--text-muted)" />
+                </marker>
+              </defs>
+
+              <!-- 宿主站 -->
+              <text x="20" y="26" fill="var(--text-muted)" font-size="13" font-weight="600">宿主站（任意框架）</text>
+              <rect x="20" y="38" width="280" height="134" rx="10" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.5" />
+              <text x="38" y="64" fill="var(--text)" font-size="14" font-weight="700">framework package</text>
+              <line x1="38" y1="75" x2="282" y2="75" stroke="var(--border)" stroke-width="1" />
+              <text x="38" y="99" fill="var(--text-muted)" font-size="13">• 判斷管理員</text>
+              <text x="38" y="123" fill="var(--text-muted)" font-size="13">• 輸出 &lt;script&gt;</text>
+              <text x="38" y="147" fill="var(--text-muted)" font-size="13">• 簽 HS256 token</text>
+
+              <!-- Relay Server -->
+              <text x="490" y="26" fill="var(--accent)" font-size="13" font-weight="600">feedback.example-studio.tw（Rust, Docker）</text>
+              <rect x="490" y="38" width="370" height="270" rx="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.8" />
+              <rect x="490" y="38" width="370" height="38" rx="10" fill="var(--accent-soft)" />
+              <rect x="490" y="64" width="370" height="12" fill="var(--accent-soft)" />
+              <text x="510" y="62" fill="var(--accent)" font-size="14" font-weight="700">relay-server (axum)</text>
+              <text x="510" y="106" fill="var(--text)" font-size="13">• 驗 token / CORS / 限流</text>
+              <text x="510" y="138" fill="var(--text)" font-size="13">• ImageStore driver → 圖片 URL</text>
+              <text x="510" y="170" fill="var(--text)" font-size="13">• GitHub client → 開 issue</text>
+              <text x="510" y="202" fill="var(--text)" font-size="13">• SQLite / Postgres 送出紀錄</text>
+              <text x="510" y="234" fill="var(--text)" font-size="13">• 提供 /widget.js、/f/{key}</text>
+              <text x="510" y="266" fill="var(--text-muted)" font-size="12">• /widget/editor.&lt;hash&gt;.js、/healthz</text>
+
+              <!-- Widget (Browser) -->
+              <rect x="20" y="232" width="280" height="76" rx="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5" />
+              <text x="38" y="262" fill="var(--text)" font-size="14" font-weight="700">widget（瀏覽器）</text>
+              <text x="38" y="286" fill="var(--text-muted)" font-size="12.5">&lt;feedback-widget&gt;（Shadow DOM）</text>
+
+              <!-- Arrow: 宿主 -> Relay (簽短效 token) -->
+              <line x1="300" y1="104" x2="484" y2="104" stroke="var(--text-muted)" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arrow-relay-muted)" />
+              <text x="395" y="94" text-anchor="middle" fill="var(--text)" font-size="12.5" font-weight="600">簽短效 token</text>
+              <text x="395" y="122" text-anchor="middle" fill="var(--text-muted)" font-size="11.5">（由 widget 帶過去）</text>
+
+              <!-- Arrow: 宿主 -> Widget (載入 widget.js) -->
+              <line x1="110" y1="172" x2="110" y2="226" stroke="var(--text-muted)" stroke-width="1.6" marker-end="url(#arrow-relay-muted)" />
+              <text x="122" y="198" fill="var(--text)" font-size="12.5">載入 widget.js</text>
+              <text x="122" y="214" fill="var(--text-muted)" font-size="11.5">（由 relay 提供）</text>
+
+              <!-- Arrow: Widget -> Relay (POST /v1/feedback) -->
+              <line x1="300" y1="270" x2="484" y2="270" stroke="var(--accent)" stroke-width="2.2" marker-end="url(#arrow-relay-accent)" />
+              <text x="395" y="259" text-anchor="middle" fill="var(--accent)" font-size="12.5" font-weight="700" font-family="var(--font-mono)">POST /v1/feedback</text>
+              <text x="395" y="289" text-anchor="middle" fill="var(--text-muted)" font-size="11.5" font-family="var(--font-mono)">Bearer token</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- SVG 2: 內嵌模式 -->
+        <div class="diagram-card">
+          <div class="diagram-title">
+            <h3>內嵌模式（embedded mode）</h3>
+            <span class="badge badge-teal">單站整合 · 沿用宿主 Session 與資料庫</span>
+          </div>
+          <div class="svg-wrap">
+            <svg viewBox="0 0 880 265" role="img" aria-label="內嵌模式架構流程圖" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="arrow-embedded-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--accent-2)" />
+                </marker>
+              </defs>
+
+              <!-- 宿主站 -->
+              <text x="110" y="24" fill="var(--accent-2)" font-size="13" font-weight="600">宿主站</text>
+              <rect x="110" y="34" width="660" height="114" rx="10" fill="var(--surface)" stroke="var(--accent-2)" stroke-width="1.8" />
+              <rect x="110" y="34" width="660" height="34" rx="10" fill="var(--accent-2-soft)" />
+              <rect x="110" y="56" width="660" height="12" fill="var(--accent-2-soft)" />
+              <text x="132" y="56" fill="var(--accent-2)" font-size="14" font-weight="700">framework package（例如 php/laravel）</text>
+              <text x="132" y="88" fill="var(--text)" font-size="13">• route + middleware：session 判斷管理員 + CSRF</text>
+              <text x="132" y="110" fill="var(--text)" font-size="13">• php/core：驗證輸入、ImageStore、GitHub 開單</text>
+              <text x="132" y="132" fill="var(--text)" font-size="13">• 宿主資料庫存送出紀錄</text>
+
+              <!-- Widget (Browser) -->
+              <rect x="270" y="198" width="340" height="54" rx="10" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.5" />
+              <text x="440" y="224" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="700">widget（瀏覽器）</text>
+              <text x="440" y="243" text-anchor="middle" fill="var(--text-muted)" font-size="12">同源請求（credentials: same-origin）</text>
+
+              <!-- Arrow: Widget -> 宿主站 -->
+              <line x1="440" y1="198" x2="440" y2="154" stroke="var(--accent-2)" stroke-width="2.2" marker-end="url(#arrow-embedded-teal)" />
+              <text x="456" y="172" fill="var(--accent-2)" font-size="12.5" font-weight="700" font-family="var(--font-mono)">POST {host}/_feedback/v1/feedback</text>
+              <text x="456" y="190" fill="var(--text-muted)" font-size="11.5">（session cookie + X-CSRF-TOKEN）</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 側邊章節目錄 + 各章節 -->
+    <div class="layout">
+      <aside class="sidebar" id="sidebarToc" aria-label="章節目錄">
+        <div class="sidebar-title">章節目錄</div>
+        <ul class="toc-list">
+          <li><a href="#summary"><span class="toc-num">00</span>頂部摘要</a></li>
+          <li><a href="#architecture"><span class="toc-num">圖</span>架構流程圖</a></li>
+          <li><a href="#sec-1"><span class="toc-num">§1</span>目標與非目標</a></li>
+          <li><a href="#sec-2"><span class="toc-num">§2</span>架構總覽與選擇指引</a></li>
+          <li><a href="#sec-3"><span class="toc-num">§3</span>Repo 結構</a></li>
+          <li><a href="#sec-4"><span class="toc-num">§4</span>元件職責</a></li>
+          <li><a href="#sec-5"><span class="toc-num">§5</span>HTTP 規格</a></li>
+          <li><a href="#sec-6"><span class="toc-num">§6</span>Token（中繼模式）</a></li>
+          <li><a href="#sec-7"><span class="toc-num">§7</span>widget 初始化</a></li>
+          <li><a href="#sec-8"><span class="toc-num">§8</span>GitHub issue 格式</a></li>
+          <li><a href="#sec-9"><span class="toc-num">§9</span>個資遮蔽約定</a></li>
+          <li><a href="#sec-10"><span class="toc-num">§10</span>送出紀錄（資料表）</a></li>
+          <li><a href="#sec-11"><span class="toc-num">§11</span>圖床 driver</a></li>
+          <li><a href="#sec-12"><span class="toc-num">§12</span>設定檔（relay）</a></li>
+          <li><a href="#sec-13"><span class="toc-num">§13</span>宿主整合指南</a></li>
+          <li><a href="#sec-14"><span class="toc-num">§14</span>選型與替代方案</a></li>
+          <li><a href="#sec-15"><span class="toc-num">§15</span>安全與個資</a></li>
+          <li><a href="#sec-16"><span class="toc-num">§16</span>里程碑</a></li>
+          <li><a href="#sec-17"><span class="toc-num">§17</span>待查證</a></li>
+        </ul>
+      </aside>
+
+      <main class="content">
+        <!-- §1 -->
+        <article class="chapter" id="sec-1">
+          <div class="chapter-head">
+            <span class="chapter-sec">§1</span>
+            <h2>目標與非目標</h2>
+          </div>
+
+          <h3>設計原則</h3>
+          <ul>
+            <li><strong>與宿主低耦合</strong>：widget 不認識 Laravel／Drupal／WordPress／Rust；宿主只負責「判斷誰能用」和「提供 endpoint 與驗證方式」。</li>
+            <li><strong>不重造輪子</strong>：擷圖用 snapdom、標註用 marker.js 3、GitHub 用各語言成熟 client。</li>
+            <li><strong>金鑰不進瀏覽器</strong>：GitHub token、圖床金鑰只存在後端。</li>
+            <li><strong>同一份規格、多套實作</strong>：Rust 中繼服務與各語言 framework package 以 <code>spec/</code> 的 HTTP 規格與 conformance 測試資料為準。</li>
+          </ul>
+
+          <h3>非目標（本版不做）</h3>
+          <ul>
+            <li>自動偵測並遮蔽個資（先訂約定與 selector 設定，見 <a href="#sec-9">§9</a>；實作在 M4）。</li>
+            <li>session replay、網路請求紀錄、cookie／localStorage 收集。</li>
+            <li>非管理員（一般訪客）回報。</li>
+            <li>在 issue 上指派 assignee（回報人多半沒有 GitHub 帳號，寫在本文）。</li>
+            <li>npm／Packagist 正式發佈（初期以 GitHub release、VCS repository 引用）。</li>
+          </ul>
+        </article>
+
+        <!-- §2 -->
+        <article class="chapter" id="sec-2">
+          <div class="chapter-head">
+            <span class="chapter-sec">§2</span>
+            <h2>架構總覽與選擇指引</h2>
+          </div>
+          <p>兩種部署模式（見上方<a href="#architecture">架構流程圖</a>），<strong>widget 打的 HTTP 規格完全相同</strong>，只差 endpoint 與驗證方式。</p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>情境</th>
+                  <th>建議模式</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>多個站共用、想集中管理圖片與 GitHub 憑證</td>
+                  <td>中繼模式</td>
+                </tr>
+                <tr>
+                  <td>單一站、不想多維護一個服務</td>
+                  <td>內嵌模式</td>
+                </tr>
+                <tr>
+                  <td>想用自架圖床（<code>local</code> driver 公開網址）</td>
+                  <td>中繼模式（relay 本身就是圖床），或內嵌模式存宿主 public disk</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <!-- §3 -->
+        <article class="chapter" id="sec-3">
+          <div class="chapter-head">
+            <span class="chapter-sec">§3</span>
+            <h2>Repo 結構（monorepo）</h2>
+          </div>
+
+          <div class="code-block">
+            <div class="code-header">
+              <span>directory</span>
+              <button type="button" class="copy-btn">複製</button>
+            </div>
+            <pre><code>widget/            TypeScript：loader（浮動按鈕）與 editor（擷圖＋標註＋表單）
+relay/core/        Rust lib：輸入驗證、token 驗簽、ImageStore drivers、GitHub client、issue 格式
+relay/server/      Rust bin：axum HTTP、DB（SQLite／Postgres）、限流、靜態提供 widget 與 local 圖片、Dockerfile
+php/core/          框架無關 PHP 核心（PSR-7／PSR-17／PSR-18）：與 relay/core 同職責
+php/laravel/       Laravel adapter：ServiceProvider、route、middleware、Blade directive、migration
+spec/              openapi.yaml、token.md、db-schema.md、masking.md、conformance/
+examples/          純 HTML 範例、mock 後端、兩種模式的 docker-compose
+SPEC.md            本文件</code></pre>
+          </div>
+
+          <p>Rust 宿主（例如自己的 Rust 系統）不需另外的 package，直接依賴 <code>relay/core</code> crate，在自己的 axum／actix route 中呼叫。</p>
+          <p>WordPress plugin、Drupal module 之後以 <code>php/core</code> 為基礎各做一層薄 adapter（<a href="#sec-13">§13</a> 只定介面）。</p>
+        </article>
+
+        <!-- §4 -->
+        <article class="chapter" id="sec-4">
+          <div class="chapter-head">
+            <span class="chapter-sec">§4</span>
+            <h2>元件職責</h2>
+          </div>
+
+          <h3>4.1 widget（瀏覽器）</h3>
+          <ul>
+            <li><strong>loader</strong>（目標 &lt; 5 KB gzip）：建立 Web Component <code>&lt;feedback-widget&gt;</code>（Shadow DOM，樣式隔離），顯示右下角浮動按鈕。按下時才動態 <code>import()</code> editor。</li>
+            <li><strong>editor</strong>（數百 KB，延遲載入）：
+              <ol>
+                <li>依遮蔽 selector 處理後，用 snapdom 擷取 <code>document.documentElement</code> 可視區（失敗退回 html-to-image）。</li>
+                <li>開光箱，載入 marker.js 3 編輯器（線、手繪、螢光筆、箭頭、文字、框線、塗黑矩形）。</li>
+                <li>表單：標題（必填）、描述（選填，多行）、類型（選項由站台設定提供）、「我已確認圖片中沒有未遮蔽的個資」勾選（必勾）。</li>
+                <li>若站台設定 <code>allowUpload: true</code>，提供「改用上傳圖片」備援（擷圖失敗或要附其他圖時）。</li>
+                <li>收集環境資料（<a href="#sec-7">§7.3</a>）與最近 20 筆 console error／未處理例外（loader 載入時就開始收集）。</li>
+                <li>送出前呼叫 <code>getToken()</code>（若有）取得最新 token；送出中按鈕停用防連點；失敗時保留表單與標註結果，可重試。</li>
+              </ol>
+            </li>
+            <li>不讀 cookie、localStorage、表單內容；不認識任何宿主框架。</li>
+            <li>UI 語系：<code>zh-TW</code>、<code>en</code>，由 <code>locale</code> 決定，預設讀 <code>&lt;html lang&gt;</code>。</li>
+          </ul>
+
+          <h3>4.2 relay（Rust 中繼服務）</h3>
+          <ul>
+            <li>驗 token（<a href="#sec-6">§6</a>）、CORS（只允許站台設定的 origin）、請求大小與圖片格式檢查。</li>
+            <li>依站台設定呼叫 ImageStore driver 上傳圖片，取得公開網址。</li>
+            <li>組 issue 本文（<a href="#sec-8">§8</a>），以 PAT 或 GitHub App 開 issue、加 label。</li>
+            <li>寫入送出紀錄（<a href="#sec-10">§10</a>），限流、失敗重試。</li>
+            <li>提供 <code>/widget.js</code>（loader）、<code>/widget/editor.&lt;hash&gt;.js</code>、<code>/f/{key}</code>（local driver 圖片）、<code>/healthz</code>。</li>
+          </ul>
+
+          <h3>4.3 framework package（以 php 為例）</h3>
+          <ul>
+            <li>中繼模式：提供「簽 token」與「輸出 script」的 helper（例如 Laravel 的 <code>@feedbackWidget</code> Blade directive），不碰 GitHub。</li>
+            <li>內嵌模式：提供與 relay 相同的 <code>/v1/feedback</code>、<code>/v1/config</code> 端點，用宿主 session 與 CSRF 驗證；內部呼叫 <code>php/core</code> 做上傳與開單。</li>
+            <li>「誰算管理員」由宿主以 callback／gate 決定，package 不預設任何角色模型。</li>
+          </ul>
+        </article>
+
+        <!-- §5 -->
+        <article class="chapter" id="sec-5">
+          <div class="chapter-head">
+            <span class="chapter-sec">§5</span>
+            <h2>HTTP 規格</h2>
+          </div>
+          <p>完整定義放 <code>spec/openapi.yaml</code>，本節為摘要。base path 為 <code>{endpoint}</code>，例如中繼模式 <code>https://feedback.example-studio.tw</code>，內嵌模式 <code>https://www.example-studio.tw/_feedback</code>。</p>
+
+          <h3>5.1 驗證</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>模式</th>
+                  <th>方式</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>中繼</td>
+                  <td><code>Authorization: Bearer &lt;token&gt;</code>（<a href="#sec-6">§6</a>），不帶 cookie（<code>credentials: 'omit'</code>）</td>
+                </tr>
+                <tr>
+                  <td>內嵌</td>
+                  <td>宿主 session cookie（同源，<code>credentials: 'same-origin'</code>）＋ widget <code>init({ headers })</code> 給的 header，例如 <code>X-CSRF-TOKEN</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>5.2 <code>GET /v1/config</code></h3>
+          <p>widget 開啟光箱時取得站台設定。</p>
+          <div class="code-block">
+            <div class="code-header">
+              <span>json</span>
+              <button type="button" class="copy-btn">複製</button>
+            </div>
+            <pre><code>{
+  "site": "example-studio",
+  "types": [
+    { "id": "bug", "label": { "zh-TW": "錯誤", "en": "Bug" } },
+    { "id": "change", "label": { "zh-TW": "修改需求", "en": "Change request" } },
+    { "id": "other", "label": { "zh-TW": "其他", "en": "Other" } }
+  ],
+  "allowUpload": true,
+  "maxImageBytes": 5242880,
+  "maskSelectors": ["[data-feedback-mask]", ".rr-mask"],
+  "ignoreSelectors": ["[data-feedback-ignore]", ".rr-block"]
+}</code></pre>
+          </div>
+
+          <h3>5.3 <code>POST /v1/feedback</code></h3>
+          <p>Content-Type：<code>multipart/form-data</code></p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>part</th>
+                  <th>型別</th>
+                  <th>說明</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>image</code></td>
+                  <td><code>image/png</code>／<code>image/jpeg</code>／<code>image/webp</code></td>
+                  <td>標註後的圖片（只送標註後版本，不送原圖，避免未遮蔽版本外流）</td>
+                </tr>
+                <tr>
+                  <td><code>payload</code></td>
+                  <td><code>application/json</code></td>
+                  <td>見下方範例</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="code-block">
+            <div class="code-header">
+              <span>json — payload</span>
+              <button type="button" class="copy-btn">複製</button>
+            </div>
+            <pre><code>{
+  "title": "報名表的日期欄位跑版",
+  "description": "手機寬度下日期欄位擠在一起……",
+  "type": "bug",
+  "consent": true,
+  "source": "capture",
+  "page": { "url": "https://www.example-studio.tw/admin/orders?id=12", "title": "訂單管理", "referrer": "" },
+  "env": {
+    "userAgent": "Mozilla/5.0 …",
+    "browser": { "name": "Chrome", "version": "131" },
+    "os": { "name": "macOS", "version": "15.1" },
+    "viewport": { "width": 1440, "height": 900 },
+    "screen": { "width": 2560, "height": 1440 },
+    "devicePixelRatio": 2,
+    "language": "zh-TW",
+    "timezone": "Asia/Taipei",
+    "clientTime": "2026-11-23T10:15:00+08:00"
+  },
+  "release": "v2026.11.0",
+  "consoleErrors": [
+    { "time": "2026-11-23T10:14:51+08:00", "message": "TypeError: …", "stack": "…" }
+  ],
+  "widgetVersion": "0.1.0"
+}</code></pre>
+          </div>
+
+          <ul>
+            <li><code>source</code>：<code>capture</code>（擷圖）或 <code>upload</code>（使用者上傳）。</li>
+            <li>回報人資訊<strong>不由 payload 提供</strong>：中繼模式取自 token，內嵌模式取自宿主 session，避免前端偽造。</li>
+            <li><code>release</code> 由宿主 <code>init({ release })</code> 提供，選填。</li>
+          </ul>
+
+          <p>成功回應 <code>201</code>：</p>
+          <div class="code-block">
+            <div class="code-header">
+              <span>json — 201 Created</span>
+              <button type="button" class="copy-btn">複製</button>
+            </div>
+            <pre><code>{ "id": "01JD…", "issue": { "number": 321, "url": "https://github.com/owner/repo/issues/321" } }</code></pre>
+          </div>
+
+          <p>錯誤回應一律：</p>
+          <div class="code-block">
+            <div class="code-header">
+              <span>json — Error</span>
+              <button type="button" class="copy-btn">複製</button>
+            </div>
+            <pre><code>{ "error": { "code": "token_expired", "message": "…" } }</code></pre>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>HTTP</th>
+                  <th>code（範例）</th>
+                  <th>widget 行為</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>400</code></td>
+                  <td><code>invalid_payload</code></td>
+                  <td>顯示訊息</td>
+                </tr>
+                <tr>
+                  <td><code>401</code></td>
+                  <td><code>token_missing</code>／<code>token_invalid</code>／<code>token_expired</code></td>
+                  <td>若有 <code>getToken</code> 重取一次後重送</td>
+                </tr>
+                <tr>
+                  <td><code>403</code></td>
+                  <td><code>origin_not_allowed</code>／<code>forbidden</code></td>
+                  <td>顯示訊息</td>
+                </tr>
+                <tr>
+                  <td><code>413</code></td>
+                  <td><code>image_too_large</code></td>
+                  <td>提示壓縮或改 JPEG</td>
+                </tr>
+                <tr>
+                  <td><code>422</code></td>
+                  <td><code>consent_required</code>／<code>unsupported_image</code></td>
+                  <td>顯示訊息</td>
+                </tr>
+                <tr>
+                  <td><code>429</code></td>
+                  <td><code>rate_limited</code>（帶 <code>Retry-After</code>）</td>
+                  <td>顯示等待秒數</td>
+                </tr>
+                <tr>
+                  <td><code>502</code></td>
+                  <td><code>storage_failed</code>／<code>github_failed</code></td>
+                  <td>保留表單，可重試；紀錄已存，後端也會重試</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>5.4 靜態資源（僅中繼模式）</h3>
+          <ul>
+            <li><code>GET /widget.js</code>：loader，<code>Cache-Control: max-age=300</code>。</li>
+            <li><code>GET /widget/editor.&lt;hash&gt;.js</code>：editor，immutable 長快取。</li>
+            <li><code>GET /f/{key}</code>：local driver 圖片，<code>X-Robots-Tag: noindex</code>、不開目錄列表。</li>
+            <li><code>GET /healthz</code>。</li>
+          </ul>
+        </article>
+
+        <!-- §6 -->
+        <article class="chapter" id="sec-6">
+          <div class="chapter-head">
+            <span class="chapter-sec">§6</span>
+            <h2>Token（中繼模式）</h2>
+          </div>
+          <ul>
+            <li>格式：JWT，<code>HS256</code>，每個站台一把 secret（≥ 32 bytes 隨機）。</li>
+            <li>header 加 <code>kid</code> = 站台代號，relay 依此找 secret。</li>
+          </ul>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>claim</th>
+                  <th>必填</th>
+                  <th>說明</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>iss</code></td>
+                  <td>✓</td>
+                  <td>站台代號，須等於 <code>kid</code></td>
+                </tr>
+                <tr>
+                  <td><code>aud</code></td>
+                  <td>✓</td>
+                  <td>固定 <code>feedback-relay</code></td>
+                </tr>
+                <tr>
+                  <td><code>sub</code></td>
+                  <td>✓</td>
+                  <td>宿主的使用者 id（字串）</td>
+                </tr>
+                <tr>
+                  <td><code>name</code></td>
+                  <td>✓</td>
+                  <td>顯示名稱</td>
+                </tr>
+                <tr>
+                  <td><code>email</code></td>
+                  <td></td>
+                  <td>選填</td>
+                </tr>
+                <tr>
+                  <td><code>roles</code></td>
+                  <td></td>
+                  <td>字串陣列，僅供記錄</td>
+                </tr>
+                <tr>
+                  <td><code>iat</code>、<code>exp</code></td>
+                  <td>✓</td>
+                  <td><code>exp - iat</code> ≤ 900 秒，relay 容許 60 秒時鐘誤差</td>
+                </tr>
+                <tr>
+                  <td><code>jti</code></td>
+                  <td>✓</td>
+                  <td>隨機 id，relay 在 <code>exp</code> 前拒絕重複使用（防重放）</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>token 只代表「這個人此刻是此站管理員」。是否為管理員由宿主判斷，relay 不知道宿主的角色模型。</p>
+          <p>widget 取得 token 的兩種方式（都支援，<code>getToken</code> 優先）：</p>
+
+          <div class="code-block">
+            <div class="code-header">
+              <span>javascript</span>
+              <button type="button" class="copy-btn">複製</button>
+            </div>
+            <pre><code>FeedbackWidget.init({ endpoint, token: '&lt;jwt&gt;' })
+FeedbackWidget.init({ endpoint, getToken: async () =&gt; (await fetch('/api/me').then(r =&gt; r.json())).feedbackToken })</code></pre>
+          </div>
+
+          <p>各語言簽 token 的範例片段放 <code>spec/token.md</code>：PHP（firebase/php-jwt）、WordPress（<code>wp_get_current_user</code> + <code>current_user_can</code>）、Drupal（<code>\Drupal::currentUser()</code>）、Rust（jsonwebtoken）、Node。</p>
+        </article>
+
+        <!-- §7 -->
+        <article class="chapter" id="sec-7">
+          <div class="chapter-head">
+            <span class="chapter-sec">§7</span>
+            <h2>widget 初始化</h2>
+          </div>
+
+          <h3>7.1 JS API（主要）</h3>
+          <div class="code-block">
+            <div class="code-header">
+              <span>javascript</span>
+              <button type="button" class="copy-btn">複製</button>
+            </div>
+            <pre><code>FeedbackWidget.init({
+  endpoint: 'https://feedback.example-studio.tw', // 必填
+  getToken: async () =&gt; '…',                     // 中繼模式擇一
+  token: '…',                                    // 中繼模式擇一
+  headers: { 'X-CSRF-TOKEN': '…' },               // 內嵌模式
+  credentials: 'omit',                            // 中繼 omit；內嵌 same-origin（預設依是否同源自動判斷）
+  site: 'example-studio',                         // 選填，僅顯示用；實際以 token／後端為準
+  release: 'v2026.11.0',
+  locale: 'zh-TW',
+  position: 'bottom-right',                       // bottom-right | bottom-left
+  zIndex: 2147483000,
+  maskSelectors: [],                              // 附加到站台預設清單
+  ignoreSelectors: [],
+  onSubmitted: (result) =&gt; {},
+})
+FeedbackWidget.destroy()
+FeedbackWidget.open()                             // 宿主可自訂觸發點</code></pre>
+          </div>
+
+          <h3>7.2 script 標籤簡寫（給 WordPress／Drupal 塞一行）</h3>
+          <div class="code-block">
+            <div class="code-header">
+              <span>html</span>
+              <button type="button" class="copy-btn">複製</button>
+            </div>
+            <pre><code>&lt;script src="https://feedback.example-studio.tw/widget.js"
+        data-endpoint="https://feedback.example-studio.tw"
+        data-token="&lt;jwt&gt;"
+        data-locale="zh-TW"
+        data-auto-init defer&gt;&lt;/script&gt;</code></pre>
+          </div>
+          <p><code>data-*</code> 對應 JS API 的同名選項（kebab-case）；需要 <code>getToken</code> 或 callback 時改用 JS API。</p>
+
+          <h3>7.3 收集的環境資料</h3>
+          <div class="split-cards">
+            <div class="sub-card">
+              <h4>收集項目</h4>
+              <p>頁面網址與標題、referrer、User-Agent 原文與解析後瀏覽器／OS（用輕量 UA parser 或 <code>navigator.userAgentData</code>）、viewport、screen、devicePixelRatio、語言、時區、客戶端時間、宿主提供的 release、widget 版本、最近 20 筆 console error 與 <code>error</code>／<code>unhandledrejection</code>。</p>
+            </div>
+            <div class="sub-card">
+              <h4>不收集項目</h4>
+              <p>cookie、localStorage／sessionStorage、表單輸入值、網路請求、DOM 原始碼。</p>
+            </div>
+          </div>
+        </article>
+
+        <!-- §8 -->
+        <article class="chapter" id="sec-8">
+          <div class="chapter-head">
+            <span class="chapter-sec">§8</span>
+            <h2>GitHub issue 格式</h2>
+          </div>
+          <p>以 <code>spec/conformance/</code> 的測試資料為唯一標準，Rust 與 PHP 產出必須逐字一致。</p>
+          <ul>
+            <li><strong>標題</strong>：<code>[{type label}] {title}</code>，例如 <code>[錯誤] 報名表的日期欄位跑版</code>。前綴可在站台設定關閉。</li>
+            <li><strong>label</strong>：站台設定的固定 label（例如 <code>feedback</code>）＋類型對應的 label。</li>
+            <li><strong>本文</strong>：</li>
+          </ul>
+
+          <div class="code-block">
+            <div class="code-header">
+              <span>markdown</span>
+              <button type="button" class="copy-btn">複製</button>
+            </div>
+            <pre><code>{description}
+
+![screenshot]({image url})
+
+**回報人**：王小明（id: 42）
+**頁面**：[訂單管理](https://www.example-studio.tw/admin/orders?id=12)
+
+&lt;details&gt;
+&lt;summary&gt;環境資料&lt;/summary&gt;
+
+| 項目 | 值 |
+| --- | --- |
+| 瀏覽器 | Chrome 131 |
+| 作業系統 | macOS 15.1 |
+| Viewport | 1440×900 @2x |
+| 螢幕 | 2560×1440 |
+| 語言／時區 | zh-TW／Asia/Taipei |
+| 回報時間 | 2026-11-23 10:15 (+08:00) |
+| 版本 | v2026.11.0 |
+| User-Agent | `Mozilla/5.0 …` |
+| 來源 | 擷圖（widget 0.1.0） |
+
+&lt;/details&gt;
+
+&lt;details&gt;
+&lt;summary&gt;Console errors（3）&lt;/summary&gt;
+
+```text
+…
+```
+
+&lt;/details&gt;
+
+&lt;!-- feedback-widget: {"id":"01JD…","site":"example-studio"} --&gt;</code></pre>
+          </div>
+
+          <h3>跳脫規則</h3>
+          <ul>
+            <li>使用者輸入的 <code>@xxx</code> 轉成 <code>@&#8203;xxx</code>，避免通知不相干的 GitHub 使用者。</li>
+            <li>表格內的值跳脫 <code>|</code> 與換行，HTML 實體化 <code>&lt;</code>、<code>&gt;</code>。</li>
+            <li>code fence 長度取「內容中最長連續反引號 + 1」（至少 3）。</li>
+            <li>圖片網址只接受 driver 回傳的 <code>https://</code> 網址。</li>
+            <li>尾端 HTML 註解帶送出紀錄 id，方便日後從 issue 反查。email 不寫入 issue（只存送出紀錄），除非站台設定 <code>showReporterEmail: true</code>。</li>
+          </ul>
+        </article>
+
+        <!-- §9 -->
+        <article class="chapter" id="sec-9">
+          <div class="chapter-head">
+            <span class="chapter-sec">§9</span>
+            <h2>個資遮蔽約定</h2>
+          </div>
+          <p>業界沒有 W3C 標準，各家 session replay／analytics 工具各自訂約定。本專案採用「自有屬性為主，預設也認得常見工具的屬性」：</p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>行為</th>
+                  <th>預設 selector</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>mask</strong>（擷圖時以實心色塊覆蓋，保留版面）</td>
+                  <td><code>[data-feedback-mask]</code>、<code>.rr-mask</code>、<code>[data-private]</code>、<code>[data-sentry-mask]</code>、<code>.sentry-mask</code>、<code>[data-clarity-mask="true"]</code>、<code>[data-hj-suppress]</code>、<code>input[type=password]</code></td>
+                </tr>
+                <tr>
+                  <td><strong>ignore</strong>（擷圖時整塊移除或留白）</td>
+                  <td><code>[data-feedback-ignore]</code>、<code>.rr-block</code>、<code>[data-sentry-block]</code>、<code>.ph-no-capture</code>，以及 widget 自身</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <ul>
+            <li>來源：rrweb（<code>rr-block</code>／<code>rr-mask</code>，Sentry、PostHog replay 底層）、Sentry、LogRocket（<code>data-private</code>）、Microsoft Clarity、Hotjar、PostHog。</li>
+            <li>清單可由站台設定（<a href="#sec-5">§5.2</a>）與 <code>init()</code> 增補，也可關閉預設清單。</li>
+            <li>實作上不自寫遮蔽邏輯：mask／ignore 交給 snapdom 的 exclude／filter 選項，mask 再加一層 CSS 色塊（API 細節見<a href="#sec-17">待查證</a>）。</li>
+            <li>時程：M1 先完成 ignore（移除 widget 自身與 ignore 清單）與手動塗黑工具，並在文件中寫明約定；mask 的自動覆蓋與自動偵測身分證／電話等，在 M4 做。</li>
+            <li>在自動遮蔽完成前，送出前必須勾選「我已確認圖片中沒有未遮蔽的個資」。</li>
+          </ul>
+        </article>
+
+        <!-- §10 -->
+        <article class="chapter" id="sec-10">
+          <div class="chapter-head">
+            <span class="chapter-sec">§10</span>
+            <h2>送出紀錄（資料表）</h2>
+          </div>
+          <p>完整 schema 放 <code>spec/db-schema.md</code>。Rust 用 sqlx，migration 只寫 SQLite 與 Postgres 共通的 SQL，以 <code>DATABASE_URL</code> 切換；PHP 內嵌模式用宿主資料庫（Laravel 一個 migration＋model）。</p>
+
+          <h3><code>feedback_submissions</code></h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>欄位</th>
+                  <th>型別</th>
+                  <th>說明</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>id</code></td>
+                  <td>text（ULID）</td>
+                  <td>主鍵</td>
+                </tr>
+                <tr>
+                  <td><code>site</code></td>
+                  <td>text</td>
+                  <td>站台代號</td>
+                </tr>
+                <tr>
+                  <td><code>reporter_id</code>／<code>reporter_name</code>／<code>reporter_email</code></td>
+                  <td>text</td>
+                  <td>來自 token 或 session</td>
+                </tr>
+                <tr>
+                  <td><code>title</code>、<code>type</code></td>
+                  <td>text</td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td><code>page_url</code></td>
+                  <td>text</td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td><code>payload_json</code></td>
+                  <td>text</td>
+                  <td>完整 payload（不含圖片）</td>
+                </tr>
+                <tr>
+                  <td><code>image_driver</code>、<code>image_url</code>、<code>image_delete_ref</code></td>
+                  <td>text</td>
+                  <td>刪除資訊：local 路徑、S3 key、imgur deletehash、通用 HTTP 刪除網址</td>
+                </tr>
+                <tr>
+                  <td><code>status</code></td>
+                  <td>text</td>
+                  <td><code>pending</code>／<code>created</code>／<code>failed</code></td>
+                </tr>
+                <tr>
+                  <td><code>issue_number</code>、<code>issue_url</code></td>
+                  <td>int／text</td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td><code>attempts</code>、<code>last_error</code></td>
+                  <td>int／text</td>
+                  <td>重試用</td>
+                </tr>
+                <tr>
+                  <td><code>created_at</code>、<code>updated_at</code></td>
+                  <td>timestamp</td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>另有 <code>token_jti</code>（防重放，可定期清除過期資料）。限流用記憶體計數器（單機）即可，不寫資料庫。</p>
+          <p>流程：收件 → 寫 <code>pending</code> → 上傳圖片 → 開 issue → 更新為 <code>created</code>。GitHub 或圖床失敗時記為 <code>failed</code> 並回 502；relay 背景工作以指數退避重試 <code>failed</code>（最多 5 次），成功時不會重複開單（以紀錄 id 判斷）。</p>
+        </article>
+
+        <!-- §11 -->
+        <article class="chapter" id="sec-11">
+          <div class="chapter-head">
+            <span class="chapter-sec">§11</span>
+            <h2>圖床 driver</h2>
+          </div>
+          <p>介面（Rust trait／PHP interface 同義）：</p>
+          <div class="code-block">
+            <div class="code-header">
+              <span>interface</span>
+              <button type="button" class="copy-btn">複製</button>
+            </div>
+            <pre><code>put(bytes, mime, key) -&gt; { url: https URL, deleteRef: string|null }
+delete(deleteRef) -&gt; ()</code></pre>
+          </div>
+          <p><code>key</code> 由核心產生：<code>{site}/{yyyy}/{mm}/{ULID}.{ext}</code>，不含使用者可控字串。</p>
+          <p>GitHub 要顯示 issue 圖片，必須由 camo 代理抓得到，所以<strong>圖片一定是公開網址</strong>；安全性只靠網址無法猜測，以及可以事後刪除。</p>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>driver</th>
+                  <th>說明</th>
+                  <th>設定</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>local</code></td>
+                  <td>relay：存在磁碟，由 <code>/f/{key}</code> 公開提供；內嵌模式：存宿主 public disk（例如 Laravel <code>public</code> disk）</td>
+                  <td><code>root</code>、<code>publicBaseUrl</code></td>
+                </tr>
+                <tr>
+                  <td><code>s3</code></td>
+                  <td>S3 相容（AWS S3、Cloudflare R2、Garage、MinIO），公開 bucket 或公開網域前綴</td>
+                  <td><code>endpoint</code>、<code>region</code>、<code>bucket</code>、<code>accessKey</code>、<code>secretKey</code>、<code>publicBaseUrl</code>、<code>pathStyle</code></td>
+                </tr>
+                <tr>
+                  <td><code>imgur-oauth</code></td>
+                  <td>以 imgur 帳號的 refresh token 上傳（圖片歸帳號管理，可刪除）</td>
+                  <td><code>clientId</code>、<code>clientSecret</code>、<code>refreshToken</code>、<code>album</code>（選填）</td>
+                </tr>
+                <tr>
+                  <td><code>http</code></td>
+                  <td>通用 HTTP 上傳</td>
+                  <td>見下方設定範例</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>通用 HTTP driver 的範圍</h3>
+          <p>一次 HTTP 請求上傳，從回應取出網址。</p>
+          <div class="code-block">
+            <div class="code-header">
+              <span>toml</span>
+              <button type="button" class="copy-btn">複製</button>
+            </div>
+            <pre><code>[sites.example-studio.storage]
+driver = "http"
+url = "https://api.imgbb.com/1/upload"
+method = "POST"
+file_field = "image"
+fields = { key = "${IMGBB_KEY}" }          # 額外表單欄位，可引用環境變數
+headers = {}                               # 額外 header，可引用環境變數
+response = "json"                          # json | text（回應本身就是網址）
+url_pointer = "/data/url"                  # JSON Pointer
+delete_pointer = "/data/delete_url"        # 選填</code></pre>
+          </div>
+
+          <div class="split-cards">
+            <div class="sub-card">
+              <h4>可涵蓋</h4>
+              <p>ImgBB、Chevereto、catbox、sm.ms、Cloudinary unsigned upload、多數自架上傳 API。</p>
+            </div>
+            <div class="sub-card">
+              <h4>不涵蓋（需寫專屬 driver）</h4>
+              <p>要對參數計算簽章（Cloudinary signed、AWS SigV4，後者用 <code>s3</code> driver）、要分多個步驟（先拿 presigned URL 再上傳）、要 OAuth refresh（用 <code>imgur-oauth</code>）。</p>
+            </div>
+          </div>
+        </article>
+
+        <!-- §12 -->
+        <article class="chapter" id="sec-12">
+          <div class="chapter-head">
+            <span class="chapter-sec">§12</span>
+            <h2>設定檔（relay）</h2>
+          </div>
+          <p>TOML，機密以 <code>${ENV}</code> 引用環境變數，啟動時展開，缺少就啟動失敗。</p>
+
+          <div class="code-block">
+            <div class="code-header">
+              <span>toml — relay config</span>
+              <button type="button" class="copy-btn">複製</button>
+            </div>
+            <pre><code>[server]
+listen = "0.0.0.0:8080"
+public_base_url = "https://feedback.example-studio.tw"
+database_url = "${DATABASE_URL}"        # sqlite:///data/feedback.db 或 postgres://…
+max_image_bytes = 5242880
+
+[sites.example-studio]
+secret = "${SITE_EXAMPLE_STUDIO_SECRET}"
+origins = ["https://www.example-studio.tw", "https://admin.example-studio.tw"]
+repo = "owner/repo"
+labels = ["feedback"]
+title_prefix = true
+show_reporter_email = false
+allow_upload = true
+rate_limit_per_minute = 5
+types = [
+  { id = "bug",    label = { "zh-TW" = "錯誤",     en = "Bug" },            github_label = "bug" },
+  { id = "change", label = { "zh-TW" = "修改需求", en = "Change request" }, github_label = "enhancement" },
+  { id = "other",  label = { "zh-TW" = "其他",     en = "Other" } },
+]
+mask_selectors = []
+ignore_selectors = []
+
+[sites.example-studio.github]
+auth = "pat"                            # pat | app
+token = "${GITHUB_TOKEN}"
+# auth = "app"
+# app_id = 123456
+# installation_id = 7890123
+# private_key_path = "/run/secrets/github-app.pem"
+
+[sites.example-studio.storage]
+driver = "local"
+root = "/data/files"</code></pre>
+          </div>
+
+          <p><code>php/laravel</code> 以 <code>config/feedback-widget.php</code> 提供同義設定（一個站台，不需要 <code>sites</code> 層）。</p>
+        </article>
+
+        <!-- §13 -->
+        <article class="chapter" id="sec-13">
+          <div class="chapter-head">
+            <span class="chapter-sec">§13</span>
+            <h2>宿主整合指南（摘要）</h2>
+          </div>
+          <p>宿主要做的事，不論哪種框架都一樣：</p>
+          <ol>
+            <li>判斷目前使用者是否可回報（管理員）；不是就什麼都不輸出。</li>
+            <li>中繼模式：簽 token（<a href="#sec-6">§6</a>），輸出 <code>&lt;script src="{relay}/widget.js"&gt;</code>，並呼叫 <code>FeedbackWidget.init({ endpoint, getToken })</code>。</li>
+            <li>內嵌模式：掛上 package 的 route，輸出 widget script，並呼叫 <code>init({ endpoint: '/_feedback', headers: { 'X-CSRF-TOKEN': … } })</code>。</li>
+            <li>想從 widget 擷圖中排除的區塊，加上 <code>data-feedback-mask</code>／<code>data-feedback-ignore</code>。</li>
+            <li>靜態頁（沒有伺服器 template）：由既有的「取得登入狀態 API」回傳是否可回報與 token，前端依此動態載入 widget。</li>
+          </ol>
+
+          <h3>各框架 adapter 的介面</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>框架</th>
+                  <th>中繼模式</th>
+                  <th>內嵌模式</th>
+                  <th>時程</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Laravel</td>
+                  <td><code>@feedbackWidget</code> directive、<code>FeedbackWidget::token($user)</code></td>
+                  <td><code>Route::feedbackWidget()</code>、middleware、migration</td>
+                  <td>M1／M2</td>
+                </tr>
+                <tr>
+                  <td>WordPress</td>
+                  <td>plugin：<code>wp_footer</code> 輸出、<code>current_user_can</code> 判斷、設定頁</td>
+                  <td>REST route <code>feedback/v1</code></td>
+                  <td>M4</td>
+                </tr>
+                <tr>
+                  <td>Drupal</td>
+                  <td>module：<code>hook_page_attachments</code>、permission <code>submit feedback</code></td>
+                  <td>route + controller</td>
+                  <td>M4</td>
+                </tr>
+                <tr>
+                  <td>Rust</td>
+                  <td>依賴 <code>relay/core</code> 的 <code>sign_token</code></td>
+                  <td>依賴 <code>relay/core</code> 的 handler，掛進自己的 router</td>
+                  <td>M2</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <!-- §14 -->
+        <article class="chapter" id="sec-14">
+          <div class="chapter-head">
+            <span class="chapter-sec">§14</span>
+            <h2>選型與替代方案</h2>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>項目</th>
+                  <th>採用</th>
+                  <th>理由</th>
+                  <th>考慮過的替代方案</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>買或做</td>
+                  <td>自己做，用現成套件組合</td>
+                  <td>跨多種框架、圖片與憑證自己掌握、沒有月費</td>
+                  <td>Marker.io、BugHerd、Usersnap、Jam（商業、月費、圖存在對方）；Sentry User Feedback（需要 Sentry；擷圖用螢幕分享 API）</td>
+                </tr>
+                <tr>
+                  <td>擷圖</td>
+                  <td>snapdom，失敗時退回 html-to-image</td>
+                  <td>不跳權限視窗、可在擷圖前排除和遮蔽 DOM</td>
+                  <td><code>getDisplayMedia</code>（像素精準，但每次要選分頁、只能事後遮蔽）、html2canvas（較舊、較慢）</td>
+                </tr>
+                <tr>
+                  <td>標註</td>
+                  <td>marker.js 3</td>
+                  <td>不依賴框架，工具最齊全；linkware 授權（免費版有小 logo，可付費拿掉），已確認可接受</td>
+                  <td>Filerobot（React、bundle 大）、tui-image-editor（停止維護）、fabric.js／Konva（要自己做 UI）</td>
+                </tr>
+                <tr>
+                  <td>擴充方式</td>
+                  <td>Web Component＋Shadow DOM</td>
+                  <td>和宿主的 CSS、JS 隔離</td>
+                  <td>iframe（擷不到宿主頁面）、直接插入 DOM（樣式互相干擾）</td>
+                </tr>
+                <tr>
+                  <td>relay 語言</td>
+                  <td>Rust：axum、tokio、octocrab、jsonwebtoken、sqlx、rust-s3、reqwest</td>
+                  <td>單一執行檔、省資源；作者想用 Rust 練功</td>
+                  <td>TypeScript＋Hono（可共用型別，但不符合目標）</td>
+                </tr>
+                <tr>
+                  <td>GitHub 驗證</td>
+                  <td>先用 PAT，目標換 GitHub App</td>
+                  <td>PAT 能最快上線；App 有 bot 身分、短效 token、細粒度權限</td>
+                  <td>只用 PAT（綁個人、會過期）</td>
+                </tr>
+                <tr>
+                  <td>圖片</td>
+                  <td>可抽換的 driver，預設 local</td>
+                  <td>issue 要公開網址；自架的圖可以自己刪除</td>
+                  <td>把圖 commit 進 repo（和程式碼耦合，已否決）</td>
+                </tr>
+                <tr>
+                  <td>資料庫</td>
+                  <td>sqlx，SQLite 起步，保留 Postgres 相容</td>
+                  <td>不用另外架資料庫，之後可擴充</td>
+                  <td>只用 SQLite</td>
+                </tr>
+                <tr>
+                  <td>PHP 核心</td>
+                  <td>PSR-7／PSR-18 框架無關核心＋薄 adapter</td>
+                  <td>Laravel、WordPress、Drupal 共用同一份邏輯</td>
+                  <td>每個框架各寫一份</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <!-- §15 -->
+        <article class="chapter" id="sec-15">
+          <div class="chapter-head">
+            <span class="chapter-sec">§15</span>
+            <h2>安全與個資</h2>
+          </div>
+          <ul>
+            <li>GitHub token 與圖床金鑰只存在後端；widget 原始碼與回應都不得包含它們。</li>
+            <li>中繼模式：檢查 token 簽章、<code>aud</code>、<code>exp</code> 與 <code>jti</code> 防重放；CORS 只允許站台列出的 origin，並同時檢查 <code>Origin</code> header。</li>
+            <li>內嵌模式：用宿主 session 加 CSRF 驗證，並在伺服器端再判斷一次權限，不信任前端。</li>
+            <li>上傳限制：預設 5 MB；以檔頭 magic bytes 驗證是 PNG、JPEG 或 WebP，不採信宿主宣告的 MIME；尺寸上限 8192×8192。</li>
+            <li>限流：每位使用者每分鐘 5 次（可設定），超過時回 429。</li>
+            <li>圖片是公開網址：在遮蔽功能完成前靠送出前的勾選確認；送出紀錄保留刪除資訊，提供 <code>relay-server delete &lt;id&gt;</code> 指令來刪圖並在 issue 留言註記。</li>
+            <li>issue 本文的跳脫規則見 <a href="#sec-8">§8</a>。</li>
+            <li>送出紀錄含 email，保存期限由站台設定（預設 365 天），到期時清空 <code>reporter_email</code> 與 <code>payload_json</code>。</li>
+          </ul>
+        </article>
+
+        <!-- §16 -->
+        <article class="chapter" id="sec-16">
+          <div class="chapter-head">
+            <span class="chapter-sec">§16</span>
+            <h2>里程碑</h2>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>里程碑</th>
+                  <th>內容</th>
+                  <th>完成標準</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>M0</strong></td>
+                  <td>本規格、<code>spec/openapi.yaml</code>、<code>spec/token.md</code>、<code>spec/db-schema.md</code>、<code>spec/masking.md</code>、conformance 測試資料初版</td>
+                  <td>經作者 review</td>
+                </tr>
+                <tr>
+                  <td><strong>M1</strong></td>
+                  <td>widget（loader＋editor：snapdom＋marker.js＋表單、ignore 清單、手動塗黑、上傳備援）；relay（token、CORS、local driver、PAT、SQLite、issue 格式、限流）；<code>examples/</code> 純 HTML＋docker-compose</td>
+                  <td>在範例頁送出一張含圖的 issue 到測試 repo；Rust 通過 conformance</td>
+                </tr>
+                <tr>
+                  <td><strong>M2</strong></td>
+                  <td><code>php/core</code>＋<code>php/laravel</code>（兩種模式）；<code>relay/core</code> 給 Rust 宿主內嵌使用；Postgres 實測</td>
+                  <td>Laravel 範例站兩種模式都能開單；PHP 通過 conformance</td>
+                </tr>
+                <tr>
+                  <td><strong>M3</strong></td>
+                  <td><code>s3</code>、<code>imgur-oauth</code>、<code>http</code> drivers；失敗重試背景工作；<code>delete</code> 指令</td>
+                  <td>每個 driver 都有整合測試（用 mock server 或 MinIO）</td>
+                </tr>
+                <tr>
+                  <td><strong>M4</strong></td>
+                  <td>GitHub App 驗證；自動 mask 覆蓋與個資偵測；WordPress plugin、Drupal module</td>
+                  <td>依各自的 issue 驗收</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p>第一個宿主（作者的 Laravel 站）的整合，另外在該站 repo 開 issue 處理，不寫進本專案。</p>
+        </article>
+
+        <!-- §17 -->
+        <article class="chapter" id="sec-17">
+          <div class="chapter-head">
+            <span class="chapter-sec">§17</span>
+            <h2>待查證（動工前確認）</h2>
+          </div>
+          <ul class="checklist">
+            <li><strong>marker.js 3</strong>：vanilla 用法、工具清單（螢光筆、塗黑矩形、文字）、匯出 PNG 的 API、Shadow DOM 內能否正常運作、linkware 授權條款原文。</li>
+            <li><strong>snapdom</strong>：<code>exclude</code>／<code>filter</code> 選項的實際名稱與行為、能否只擷取可視區、跨網域圖片與字型的處理、失敗時的錯誤型態。</li>
+            <li><strong>html-to-image</strong>：作為退路時的 <code>filter</code> 行為。</li>
+            <li><strong>octocrab</strong>：GitHub App installation token 的取得與快取方式。</li>
+            <li><strong>rust-s3</strong>：對 R2 和 path-style 的支援。</li>
+            <li><strong>imgur API</strong>：目前 OAuth app 註冊是否開放、上傳頻率限制、商業用途條款。</li>
+            <li><strong>UA 解析</strong>：選用 <code>ua-parser-js</code>（注意 v2 改為 AGPL 授權）或 <code>bowser</code>，或只用 <code>navigator.userAgentData</code>；先確認授權。</li>
+          </ul>
+        </article>
+      </main>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <span>來源規格：SPEC.md（草案 v0.1，2026-11-23）</span>
+    <span>單檔離線規格簡報頁 · 支援系統亮色／暗色模式</span>
+  </footer>
+
+  <script>
+    (function () {
+      // 1. 程式碼複製按鈕
+      function fallbackCopy(text) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        var ok = false;
+        try {
+          ok = document.execCommand('copy');
+        } catch (e) {
+          ok = false;
+        }
+        document.body.removeChild(ta);
+        return ok;
+      }
+
+      document.querySelectorAll('.code-block .copy-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var block = btn.closest('.code-block');
+          var codeEl = block && block.querySelector('pre code');
+          if (!codeEl) return;
+          var text = codeEl.textContent;
+
+          var done = function () {
+            btn.textContent = '已複製';
+            btn.classList.add('copied');
+            clearTimeout(btn._timer);
+            btn._timer = setTimeout(function () {
+              btn.textContent = '複製';
+              btn.classList.remove('copied');
+            }, 1600);
+          };
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, function () {
+              if (fallbackCopy(text)) done();
+            });
+          } else if (fallbackCopy(text)) {
+            done();
+          }
+        });
+      });
+
+      // 2. 手機版目錄切換
+      var tocToggle = document.getElementById('tocToggle');
+      var sidebarToc = document.getElementById('sidebarToc');
+      if (tocToggle && sidebarToc) {
+        tocToggle.addEventListener('click', function () {
+          var isOpen = sidebarToc.classList.toggle('open');
+          tocToggle.setAttribute('aria-expanded', String(isOpen));
+        });
+
+        sidebarToc.querySelectorAll('a').forEach(function (link) {
+          link.addEventListener('click', function () {
+            if (window.innerWidth <= 1024) {
+              sidebarToc.classList.remove('open');
+              tocToggle.setAttribute('aria-expanded', 'false');
+            }
+          });
+        });
+      }
+
+      // 3. 亮色／暗色主題切換（預設跟隨 prefers-color-scheme）
+      var themeToggle = document.getElementById('themeToggle');
+      var modes = ['auto', 'light', 'dark'];
+      var modeLabels = { auto: '主題：自動', light: '主題：亮色', dark: '主題：暗色' };
+      var currentMode = 'auto';
+
+      function applyTheme(mode) {
+        currentMode = mode;
+        if (mode === 'auto') {
+          document.documentElement.removeAttribute('data-theme');
+        } else {
+          document.documentElement.setAttribute('data-theme', mode);
+        }
+        if (themeToggle) {
+          themeToggle.textContent = modeLabels[mode];
+        }
+      }
+
+      if (themeToggle) {
+        themeToggle.addEventListener('click', function () {
+          var next = modes[(modes.indexOf(currentMode) + 1) % modes.length];
+          applyTheme(next);
+        });
+      }
+
+      // 4. 側邊目錄 active 高亮
+      var tocLinks = Array.prototype.slice.call(document.querySelectorAll('.toc-list a'));
+      var linkMap = {};
+      var targets = [];
+      tocLinks.forEach(function (a) {
+        var id = a.getAttribute('href').slice(1);
+        var el = document.getElementById(id);
+        if (el) {
+          linkMap[id] = a;
+          targets.push(el);
+        }
+      });
+
+      function setActive(id) {
+        tocLinks.forEach(function (a) {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+        });
+      }
+
+      if ('IntersectionObserver' in window && targets.length) {
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              setActive(entry.target.id);
+            }
+          });
+        }, {
+          rootMargin: '-18% 0px -70% 0px',
+          threshold: 0
+        });
+        targets.forEach(function (el) { observer.observe(el); });
+      }
+    })();
+  </script>
+</body>
+</html>
