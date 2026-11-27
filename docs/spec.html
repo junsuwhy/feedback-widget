@@ -392,13 +392,11 @@
       color: var(--text-muted);
     }
 
-    .diagram-stack {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1.25rem;
-    }
-
-    .diagram-card {
+    /* 架構與元件拆解圖（互動） */
+    .cmap {
+      --m: var(--accent);
+      --m-soft: var(--accent-soft);
+      --m-border: var(--accent-border);
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 14px;
@@ -406,35 +404,345 @@
       box-shadow: var(--shadow-sm);
     }
 
-    .diagram-title {
+    .cmap[data-mode="embedded"] {
+      --m: var(--accent-2);
+      --m-soft: var(--accent-2-soft);
+      --m-border: var(--accent-2-border);
+    }
+
+    .seg {
+      display: inline-flex;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .seg button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.42rem 0.85rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .seg button + button {
+      border-left: 1px solid var(--border-strong);
+    }
+
+    .seg button:hover {
+      color: var(--text);
+    }
+
+    .seg button[aria-pressed="true"] {
+      background: var(--m-soft);
+      color: var(--m);
+    }
+
+    .cmap button:focus-visible,
+    .cmap a:focus-visible {
+      outline: 2px solid var(--m);
+      outline-offset: 2px;
+    }
+
+    .cmap-stepper {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
-      margin-bottom: 0.85rem;
       flex-wrap: wrap;
+      align-items: center;
+      gap: 0.6rem 0.75rem;
+      padding: 0.65rem 0.8rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 0.9rem;
     }
 
-    .diagram-title h3 {
+    .cmap-step-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .cmap-step-btns button:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .cmap-step-count {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .cmap-step-text {
+      flex: 1 1 100%;
       margin: 0;
-      font-size: 1.05rem;
+      font-size: 0.92rem;
+      line-height: 1.6;
+      min-height: 3.2em;
     }
 
-    .svg-wrap {
-      width: 100%;
+    .cmap-svg-wrap {
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
       background: var(--bg);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      padding: 0.75rem;
+      padding: 0.5rem;
     }
 
-    .svg-wrap svg {
+    .cmap-svg-wrap svg {
       display: block;
       width: 100%;
-      min-width: 640px;
+      min-width: 820px;
       height: auto;
+      font-family: var(--font-sans);
+    }
+
+    .cm-zone-shape {
+      fill: var(--surface-alt);
+      stroke: var(--border-strong);
+      stroke-width: 1.2;
+      stroke-linejoin: round;
+    }
+
+    .cm-zone-title {
+      fill: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .cm-zone-where {
+      fill: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+    }
+
+    .cm-arr { fill: var(--text-muted); }
+    .cm-arr-on { fill: var(--m); }
+    .cm-arr-fail { fill: var(--warn-text); }
+
+    .cm-edge path {
+      fill: none;
+      stroke: var(--text-muted);
+      stroke-width: 1.5;
+      stroke-linejoin: round;
+      marker-end: url(#cmArr);
+    }
+
+    .cm-edge.is-dashed path {
+      stroke-dasharray: 4 4;
+    }
+
+    .cm-edge text {
+      fill: var(--text-muted);
+      font-size: 10.5px;
+      paint-order: stroke;
+      stroke: var(--surface-alt);
+      stroke-width: 4px;
+      stroke-linejoin: round;
+    }
+
+    .cm-edge.is-step path {
+      stroke: var(--m);
+      stroke-width: 2.6;
+      stroke-dasharray: 7 5;
+      marker-end: url(#cmArrOn);
+      animation: cm-flow 0.9s linear infinite;
+    }
+
+    .cm-edge.is-step text {
+      fill: var(--m);
+      font-weight: 700;
+    }
+
+    .cm-edge.is-fail path {
+      stroke: var(--warn-text);
+      stroke-width: 2.6;
+      stroke-dasharray: 3 5;
+      marker-end: url(#cmArrFail);
+    }
+
+    .cm-edge.is-fail text {
+      fill: var(--warn-text);
+      font-weight: 700;
+    }
+
+    .cm-edge.is-off {
+      display: none;
+    }
+
+    @keyframes cm-flow {
+      to { stroke-dashoffset: -12; }
+    }
+
+    .cm-node {
+      cursor: pointer;
+      outline: none;
+    }
+
+    .cm-node .cm-box {
+      fill: var(--surface);
+      stroke: var(--border-strong);
+      stroke-width: 1.2;
+      transition: stroke 0.15s ease, fill 0.15s ease;
+    }
+
+    .cm-node .cm-tile {
+      fill: var(--m-soft);
+    }
+
+    .cm-node .cm-ico {
+      fill: none;
+      stroke: var(--m);
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .cm-node .cm-ico-f {
+      fill: var(--m);
+    }
+
+    .cm-node .cm-name {
+      fill: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      text-anchor: middle;
+    }
+
+    .cm-node .cm-metric {
+      fill: var(--text-muted);
+      font-size: 10.5px;
+      text-anchor: middle;
+    }
+
+    .cm-node:hover .cm-box {
+      stroke: var(--m);
+    }
+
+    .cm-node:focus-visible .cm-box {
+      stroke: var(--m);
+      stroke-width: 3;
+    }
+
+    .cm-node[aria-pressed="true"] .cm-box {
+      stroke: var(--m);
+      stroke-width: 2.2;
+    }
+
+    .cm-node.is-step .cm-box {
+      stroke: var(--m);
+      stroke-width: 2.6;
+      fill: var(--m-soft);
+    }
+
+    .cm-node.is-step .cm-tile {
+      fill: var(--surface);
+    }
+
+    .cm-node.is-fail .cm-box {
+      stroke: var(--warn-text);
+      stroke-width: 2.6;
+      fill: var(--warn-bg);
+    }
+
+    .cm-node.is-off {
+      opacity: 0.4;
+    }
+
+    .cm-node.is-off .cm-box {
+      stroke-dasharray: 4 3;
+    }
+
+    .cmap-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem 1.2rem;
+      margin: 0.6rem 0 0.9rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .cmap-detail {
+      padding: 0.9rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--m-border);
+      border-top: 3px solid var(--m);
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+    }
+
+    .cmap-detail-where {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      overflow-wrap: anywhere;
+    }
+
+    .cmap-detail h3 {
+      margin: 0.15rem 0 0.5rem;
+      font-size: 1.05rem;
+    }
+
+    .cmap-detail ul {
+      margin: 0 0 0.7rem;
+      padding-left: 1.15rem;
+      columns: 2 320px;
+      column-gap: 2.2rem;
+    }
+
+    .cmap-detail li {
+      margin-bottom: 0.3rem;
+      break-inside: avoid;
+    }
+
+    .cmap-detail-off {
+      margin: 0 0 0.6rem;
+      padding: 0.45rem 0.6rem;
+      border-radius: 6px;
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      color: var(--warn-text);
+      font-size: 0.82rem;
+    }
+
+    .cmap-detail-close {
+      float: right;
+      margin: 0 0 0.3rem 0.5rem;
+      padding: 0.15rem 0.5rem;
+      font-size: 0.76rem;
+    }
+
+    .cmap-detail-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem 0.9rem;
+      font-size: 0.84rem;
+      font-weight: 600;
+    }
+
+    @media (max-width: 680px) {
+      .cmap {
+        padding: 0.9rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .cm-node .cm-box {
+        transition: none;
+      }
+
+      .cm-edge.is-step path {
+        animation: none;
+      }
     }
 
     /* Main 2-column Layout: Sidebar TOC + Chapters */
@@ -780,10 +1088,6 @@
         padding: 1.2rem 1.05rem;
       }
 
-      .diagram-card {
-        padding: 1rem;
-      }
-
       .topbar-inner {
         padding: 0.6rem 0.85rem;
       }
@@ -878,112 +1182,48 @@
       </div>
     </section>
 
-    <!-- 架構圖（Inline SVG） -->
+    <!-- 架構與元件拆解圖（互動，圖由頁尾的 script 產生） -->
     <section class="arch-section" id="architecture">
       <div class="arch-header">
-        <h2>架構流程圖</h2>
-        <p>中繼模式與內嵌模式共用同一套 widget 與 HTTP 介面</p>
+        <h2>架構與元件拆解圖</h2>
+        <p>兩種模式共用同一套 widget 與 HTTP 介面；點任一元件看它的職責</p>
       </div>
 
-      <div class="diagram-stack">
-        <!-- SVG 1: 中繼模式 -->
-        <div class="diagram-card">
-          <div class="diagram-title">
-            <h3>中繼模式（relay mode）</h3>
-            <span class="badge">多站共用 · 集中管理 GitHub 憑證</span>
+      <div class="cmap" id="cmap" data-mode="relay">
+        <div class="cmap-stepper">
+          <div class="seg" role="group" aria-label="部署模式">
+            <button type="button" data-act="mode" data-val="relay" aria-pressed="true">中繼模式</button>
+            <button type="button" data-act="mode" data-val="embedded" aria-pressed="false">內嵌模式</button>
           </div>
-          <div class="svg-wrap">
-            <svg viewBox="0 0 880 330" role="img" aria-label="中繼模式架構流程圖" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <marker id="arrow-relay-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                  <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--accent)" />
-                </marker>
-                <marker id="arrow-relay-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                  <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--text-muted)" />
-                </marker>
-              </defs>
-
-              <!-- 宿主站 -->
-              <text x="20" y="26" fill="var(--text-muted)" font-size="13" font-weight="600">宿主站（任意框架）</text>
-              <rect x="20" y="38" width="280" height="134" rx="10" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.5" />
-              <text x="38" y="64" fill="var(--text)" font-size="14" font-weight="700">framework package</text>
-              <line x1="38" y1="75" x2="282" y2="75" stroke="var(--border)" stroke-width="1" />
-              <text x="38" y="99" fill="var(--text-muted)" font-size="13">• 判斷管理員</text>
-              <text x="38" y="123" fill="var(--text-muted)" font-size="13">• 輸出 &lt;script&gt;</text>
-              <text x="38" y="147" fill="var(--text-muted)" font-size="13">• 簽 HS256 token</text>
-
-              <!-- Relay Server -->
-              <text x="490" y="26" fill="var(--accent)" font-size="13" font-weight="600">feedback.example-studio.tw（Rust, Docker）</text>
-              <rect x="490" y="38" width="370" height="270" rx="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.8" />
-              <rect x="490" y="38" width="370" height="38" rx="10" fill="var(--accent-soft)" />
-              <rect x="490" y="64" width="370" height="12" fill="var(--accent-soft)" />
-              <text x="510" y="62" fill="var(--accent)" font-size="14" font-weight="700">relay-server (axum)</text>
-              <text x="510" y="106" fill="var(--text)" font-size="13">• 驗 token / CORS / 限流</text>
-              <text x="510" y="138" fill="var(--text)" font-size="13">• 圖片上傳為 GitHub 附件</text>
-              <text x="510" y="170" fill="var(--text)" font-size="13">• GitHub client → 開 issue</text>
-              <text x="510" y="202" fill="var(--text)" font-size="13">• SQLite / Postgres 送出紀錄</text>
-              <text x="510" y="234" fill="var(--text)" font-size="13">• 提供 /widget.js</text>
-              <text x="510" y="266" fill="var(--text-muted)" font-size="12">• /widget/editor.&lt;hash&gt;.js、/healthz</text>
-
-              <!-- Widget (Browser) -->
-              <rect x="20" y="232" width="280" height="76" rx="10" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5" />
-              <text x="38" y="262" fill="var(--text)" font-size="14" font-weight="700">widget（瀏覽器）</text>
-              <text x="38" y="286" fill="var(--text-muted)" font-size="12.5">&lt;feedback-widget&gt;（Shadow DOM）</text>
-
-              <!-- Arrow: 宿主 -> Relay (簽短效 token) -->
-              <line x1="300" y1="104" x2="484" y2="104" stroke="var(--text-muted)" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arrow-relay-muted)" />
-              <text x="395" y="94" text-anchor="middle" fill="var(--text)" font-size="12.5" font-weight="600">簽短效 token</text>
-              <text x="395" y="122" text-anchor="middle" fill="var(--text-muted)" font-size="11.5">（由 widget 帶過去）</text>
-
-              <!-- Arrow: 宿主 -> Widget (載入 widget.js) -->
-              <line x1="110" y1="172" x2="110" y2="226" stroke="var(--text-muted)" stroke-width="1.6" marker-end="url(#arrow-relay-muted)" />
-              <text x="122" y="198" fill="var(--text)" font-size="12.5">載入 widget.js</text>
-              <text x="122" y="214" fill="var(--text-muted)" font-size="11.5">（由 relay 提供）</text>
-
-              <!-- Arrow: Widget -> Relay (POST /v1/feedback) -->
-              <line x1="300" y1="270" x2="484" y2="270" stroke="var(--accent)" stroke-width="2.2" marker-end="url(#arrow-relay-accent)" />
-              <text x="395" y="259" text-anchor="middle" fill="var(--accent)" font-size="12.5" font-weight="700" font-family="var(--font-mono)">POST /v1/feedback</text>
-              <text x="395" y="289" text-anchor="middle" fill="var(--text-muted)" font-size="11.5" font-family="var(--font-mono)">Bearer token</text>
-            </svg>
+          <div class="seg" role="group" aria-label="情境">
+            <button type="button" data-act="scenario" data-val="ok" aria-pressed="true">送出成功</button>
+            <button type="button" data-act="scenario" data-val="fail" aria-pressed="false">上傳或開單失敗</button>
           </div>
+          <div class="cmap-step-btns">
+            <button type="button" class="btn-ghost" data-act="prev">上一步</button>
+            <button type="button" class="btn-ghost" data-act="play">播放</button>
+            <button type="button" class="btn-ghost" data-act="next">下一步</button>
+            <button type="button" class="btn-ghost" data-act="reset">清除</button>
+          </div>
+          <span class="cmap-step-count" id="cmapStepCount"></span>
+          <p class="cmap-step-text" id="cmapStepText" aria-live="polite"></p>
         </div>
 
-        <!-- SVG 2: 內嵌模式 -->
-        <div class="diagram-card">
-          <div class="diagram-title">
-            <h3>內嵌模式（embedded mode）</h3>
-            <span class="badge badge-teal">單站整合 · 沿用宿主 Session 與資料庫</span>
-          </div>
-          <div class="svg-wrap">
-            <svg viewBox="0 0 880 265" role="img" aria-label="內嵌模式架構流程圖" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <marker id="arrow-embedded-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                  <path d="M 0 1 L 10 5 L 0 9 z" fill="var(--accent-2)" />
-                </marker>
-              </defs>
-
-              <!-- 宿主站 -->
-              <text x="110" y="24" fill="var(--accent-2)" font-size="13" font-weight="600">宿主站</text>
-              <rect x="110" y="34" width="660" height="114" rx="10" fill="var(--surface)" stroke="var(--accent-2)" stroke-width="1.8" />
-              <rect x="110" y="34" width="660" height="34" rx="10" fill="var(--accent-2-soft)" />
-              <rect x="110" y="56" width="660" height="12" fill="var(--accent-2-soft)" />
-              <text x="132" y="56" fill="var(--accent-2)" font-size="14" font-weight="700">framework package（例如 php/laravel）</text>
-              <text x="132" y="88" fill="var(--text)" font-size="13">• route + middleware：session 判斷管理員 + CSRF</text>
-              <text x="132" y="110" fill="var(--text)" font-size="13">• php/core：驗證輸入、上傳附件、GitHub 開單</text>
-              <text x="132" y="132" fill="var(--text)" font-size="13">• 宿主資料庫存送出紀錄</text>
-
-              <!-- Widget (Browser) -->
-              <rect x="270" y="198" width="340" height="54" rx="10" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.5" />
-              <text x="440" y="224" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="700">widget（瀏覽器）</text>
-              <text x="440" y="243" text-anchor="middle" fill="var(--text-muted)" font-size="12">同源請求（credentials: same-origin）</text>
-
-              <!-- Arrow: Widget -> 宿主站 -->
-              <line x1="440" y1="198" x2="440" y2="154" stroke="var(--accent-2)" stroke-width="2.2" marker-end="url(#arrow-embedded-teal)" />
-              <text x="456" y="172" fill="var(--accent-2)" font-size="12.5" font-weight="700" font-family="var(--font-mono)">POST {host}/_feedback/v1/feedback</text>
-              <text x="456" y="190" fill="var(--text-muted)" font-size="11.5">（session cookie + X-CSRF-TOKEN）</text>
-            </svg>
-          </div>
+        <div class="cmap-svg-wrap">
+          <svg id="cmapSvg" viewBox="0 0 1016 804" role="group" aria-label="feedback-widget 元件與資料流向圖" xmlns="http://www.w3.org/2000/svg"></svg>
         </div>
+
+        <div class="cmap-legend">
+          <span>→ 箭頭：一筆回報的流向</span>
+          <span>⇢ 虛線箭頭：背景重試</span>
+          <span>淡色虛框：目前的模式不使用</span>
+        </div>
+
+        <aside class="cmap-detail" id="cmapDetail" aria-live="polite" aria-label="元件說明"></aside>
+
+        <noscript>
+          <p>這張圖需要 JavaScript。元件職責的文字版見 <a href="#sec-4">§4 元件職責</a>。</p>
+        </noscript>
       </div>
     </section>
 
@@ -993,7 +1233,7 @@
         <div class="sidebar-title">章節目錄</div>
         <ul class="toc-list">
           <li><a href="#summary"><span class="toc-num">00</span>頂部摘要</a></li>
-          <li><a href="#architecture"><span class="toc-num">圖</span>架構流程圖</a></li>
+          <li><a href="#architecture"><span class="toc-num">圖</span>架構與元件拆解圖</a></li>
           <li><a href="#sec-1"><span class="toc-num">§1</span>目標與非目標</a></li>
           <li><a href="#sec-2"><span class="toc-num">§2</span>架構總覽與選擇指引</a></li>
           <li><a href="#sec-3"><span class="toc-num">§3</span>Repo 結構</a></li>
@@ -1047,7 +1287,7 @@
             <span class="chapter-sec">§2</span>
             <h2>架構總覽與選擇指引</h2>
           </div>
-          <p>兩種部署模式（見上方<a href="#architecture">架構流程圖</a>），<strong>widget 打的 HTTP 規格完全相同</strong>，只差 endpoint 與驗證方式。</p>
+          <p>兩種部署模式（見上方<a href="#architecture">架構與元件拆解圖</a>），<strong>widget 打的 HTTP 規格完全相同</strong>，只差 endpoint 與驗證方式。</p>
 
           <div class="table-wrap">
             <table>
@@ -2096,6 +2336,738 @@ token = "${GITHUB_TOKEN}"               # 專用機器帳號的 PAT，限定單�
         });
         targets.forEach(function (el) { observer.observe(el); });
       }
+    })();
+  </script>
+  <script>
+    // 架構與元件拆解圖：資料以 SPEC.md 為準，規格改動時同步修改這裡
+    (function () {
+      var root = document.getElementById('cmap');
+      var svg = document.getElementById('cmapSvg');
+      if (!root || !svg) return;
+
+      var NS = 'http://www.w3.org/2000/svg';
+      var W = 100;
+      var H = 92;
+      var state = { mode: 'relay', scenario: 'ok', step: -1, selected: null, timer: null };
+
+      // 區塊：程式實際執行的位置
+      var ZONES = {
+        h: { title: '宿主站', where: '任意框架', rect: [10, 10, 244, 256] },
+        w: { title: '瀏覽器（widget）', where: '<feedback-widget> · Shadow DOM', rect: [260, 10, 746, 256] },
+        b: {
+          title: { relay: '後端：relay 服務', embedded: '後端：宿主站內的 framework package' },
+          where: { relay: 'feedback.example-studio.tw · Rust／axum · Docker', embedded: 'www.example-studio.tw/_feedback · 例如 php/laravel' },
+          path: 'M10 282H1006V432H760V794H10Z', label: [22, 304, 750]
+        },
+        g: { title: 'GitHub', where: '目標 repo（建議私有）', rect: [776, 448, 230, 346] }
+      };
+
+      // 元件左上角座標
+      var POS = {
+        h2: [144, 44], h1: [20, 160], h3: [144, 160],
+        w2: [268, 44], w7: [888, 44],
+        w1: [268, 160], w3: [392, 160], w4: [516, 160], w5: [640, 160], w6: [764, 160], w8: [888, 160],
+        b12: [268, 316], b11: [764, 316],
+        b1: [20, 440], b2: [144, 440], b3: [268, 440], b4: [392, 440], b5: [516, 440], b6: [640, 440],
+        b10: [268, 566], b7: [392, 566], b8: [516, 566], b9: [640, 566],
+        g2: [838, 566], g1: [838, 690]
+      };
+
+      // 圖上的短名稱與關鍵數字（完整說明在 MODS）
+      var SHORT = {
+        h1: ['權限判斷', 'callback／gate'],
+        h2: ['Token 簽發器', '效期 ≤ 900 秒'],
+        h3: ['Script 輸出', 'script + init()'],
+        w1: ['載入器 loader', '< 5 KB gzip'],
+        w2: ['錯誤收集器', '最近 20 筆'],
+        w3: ['遮蔽器', 'mask／ignore'],
+        w4: ['擷圖器', 'snapdom'],
+        w5: ['標註器', '7 種工具'],
+        w6: ['回報表單', '個資確認必勾'],
+        w7: ['環境收集器', '瀏覽器、OS…'],
+        w8: ['送出器', 'image + payload'],
+        b1: ['來源檢查', 'CORS + Origin'],
+        b2: ['驗證器', { relay: 'Bearer JWT', embedded: 'Session + CSRF' }],
+        b3: ['限流器', '每分鐘 5 次'],
+        b4: ['輸入圖片檢查器', '5 MB、8192 px'],
+        b5: ['備份檔儲存', '最長留 7 天'],
+        b6: ['送出紀錄', '3 種狀態'],
+        b7: ['附件上傳器', '先上傳才開單'],
+        b8: ['Issue 產生器', '標題、本文、跳脫'],
+        b9: ['開單 client', '持有 PAT'],
+        b10: ['重試器', '最多 5 次'],
+        b11: ['站台設定端點', 'GET /v1/config'],
+        b12: ['靜態資源', '/widget.js'],
+        g1: ['附件端點', '上傳後無法刪除'],
+        g2: ['Issues API', '目標 repo']
+      };
+
+      // 圖示：24×24，s 為線條，f 為實心
+      var ICON = {
+        h1: { s: 'M9 11a3.5 3.5 0 1 0 0-7a3.5 3.5 0 0 0 0 7z M2.5 20c0-3.6 2.9-6 6.5-6c1.6 0 3 .5 4.2 1.3 M15 17l2.5 2.5L22 14' },
+        h2: { s: 'M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z M9 6.5v2 M9 11v2 M9 15.5v2 M13 10.5h4.5 M13 13.5h3' },
+        h3: { s: 'M8 7l-5 5l5 5 M16 7l5 5l-5 5 M13.5 5l-3 14' },
+        w1: { s: 'M3 5h18v14H3z M3 9h18', f: 'M17.3 13.2a2 2 0 1 0 0 4a2 2 0 0 0 0-4z' },
+        w2: { s: 'M12 4L2.5 20h19z M12 10v5', f: 'M12 16.6a.9.9 0 1 0 0 1.8a.9.9 0 0 0 0-1.8z' },
+        w3: { s: 'M5 3h14v18H5z M8 7h8 M8 17.5h5', f: 'M8 10h8v4H8z' },
+        w4: { s: 'M4 8V4h4 M16 4h4v4 M20 16v4h-4 M8 20H4v-4 M12 9a3 3 0 1 0 0 6a3 3 0 0 0 0-6z' },
+        w5: { s: 'M4 20l1-4L16 5l3 3L8 19z M14 7l3 3 M13 20h7' },
+        w6: { s: 'M5 3h14v18H5z M8 7h8 M8 11h8 M8 16l1.5 1.5l3-3' },
+        w7: { s: 'M3 4h18v12H3z M9 20h6 M12 16v4 M12 10.5v2.5', f: 'M12 6.8a.9.9 0 1 0 0 1.8a.9.9 0 0 0 0-1.8z' },
+        w8: { s: 'M21 3L3 10.5l7 2.5l2.5 7z M10 13L21 3' },
+        b1: { s: 'M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z M3 12h18 M12 3c3.2 3 3.2 15 0 18 M12 3c-3.2 3-3.2 15 0 18' },
+        b2: { s: 'M12 3l8 3v6c0 4.5-3.2 7.7-8 9c-4.8-1.300-8-4.500-8-9V6z M8.500 12l2.500 2.500l4.500-4.500' },
+        b3: { s: 'M4 17a8 8 0 1 1 16 0 M12 17l4-5.500 M2.500 17h19', f: 'M12 15.800a1.200 1.200 0 1 0 0 2.400a1.200 1.200 0 0 0 0-2.400z' },
+        b4: { s: 'M3 5h13v11H3z M3 13.500l3.500-3.500l3.500 3.500 M17 14a3 3 0 1 0 0 6a3 3 0 0 0 0-6z M19.200 19.200L22 22' },
+        b5: { s: 'M3 6h6l2 2h10v11H3z M7.500 16l3-3.500l2.200 2.200l1.300-1.200l2.500 2.500' },
+        b6: { s: 'M4 6c0-1.700 3.600-3 8-3s8 1.300 8 3s-3.600 3-8 3s-8-1.300-8-3z M4 6v12c0 1.700 3.600 3 8 3s8-1.300 8-3V6 M4 12c0 1.700 3.600 3 8 3s8-1.300 8-3' },
+        b7: { s: 'M12 16V4 M7 9l5-5l5 5 M4 15v5h16v-5' },
+        b8: { s: 'M6 3h9l4 4v14H6z M15 3v4h4 M9 11h7 M9 14h7 M9 17h4' },
+        b9: { s: 'M8 12a4 4 0 1 0 0 8a4 4 0 0 0 0-8z M11 13l9-9 M17 7l2.500 2.500 M14.500 9.500l2 2' },
+        b10: { s: 'M20 12a8 8 0 1 1-2.600-5.900 M20 4v5h-5' },
+        b11: { s: 'M4 7h10 M18 7h2 M4 12h3 M11 12h9 M4 17h9 M17 17h3 M16 5a2 2 0 1 0 0 4a2 2 0 0 0 0-4z M9 10a2 2 0 1 0 0 4a2 2 0 0 0 0-4z M15 15a2 2 0 1 0 0 4a2 2 0 0 0 0-4z' },
+        b12: { s: 'M6 3h9l4 4v14H6z M15 3v4h4 M10.500 12l-2 2.500l2 2.500 M14.500 12l2 2.500l-2 2.500' },
+        g1: { s: 'M20 11l-8 8a5 5 0 0 1-7-7l8.500-8.500a3.300 3.300 0 0 1 4.700 4.700L10 16.500a1.700 1.700 0 0 1-2.400-2.400l7.400-7.400' },
+        g2: { s: 'M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z', f: 'M12 9.500a2.500 2.500 0 1 0 0 5a2.500 2.500 0 0 0 0-5z' }
+      };
+
+      // 連線：d 為路徑，label 為 [文字, x, y, 對齊]
+      var EDGES = [
+        { id: 'h1h3', d: 'M120 206H142' },
+        { id: 'h1h2', only: 'relay', d: 'M70 160V90H142', label: ['是管理員', 76, 84, 'start'] },
+        { id: 'h2h3', only: 'relay', d: 'M194 136V158', label: ['token', 200, 151, 'start'] },
+        { id: 'h3w1', d: 'M244 206H266' },
+        { id: 'w1w2', d: 'M318 160V138', label: ['載入即開始', 324, 153, 'start'] },
+        { id: 'w2w7', d: 'M368 90H886', label: ['最近 20 筆錯誤', 627, 83, 'middle'] },
+        { id: 'w7w8', d: 'M938 136V158', label: ['放進 payload', 932, 151, 'end'] },
+        { id: 'w1w3', d: 'M368 206H390' },
+        { id: 'w3w4', d: 'M492 206H514' },
+        { id: 'w4w5', d: 'M616 206H638' },
+        { id: 'w5w6', d: 'M740 206H762' },
+        { id: 'w6w8', d: 'M864 206H886' },
+        { id: 'b12w1', only: 'relay', d: 'M318 316V254', label: ['下載 widget.js', 324, 277, 'start'] },
+        { id: 'b11w6', d: 'M814 316V254', label: ['類型選項、圖片上限、遮蔽清單', 808, 277, 'end'] },
+        {
+          id: 'post',
+          d: { relay: 'M938 252V424H70V438', embedded: 'M938 252V424H194V438' },
+          label: [{ relay: 'POST /v1/feedback · Authorization: Bearer <token>', embedded: 'POST /_feedback/v1/feedback · session cookie + X-CSRF-TOKEN' }, 520, 417, 'middle']
+        },
+        { id: 'b1b2', only: 'relay', d: 'M120 486H142' },
+        { id: 'b2b3', d: 'M244 486H266' },
+        { id: 'b3b4', d: 'M368 486H390' },
+        { id: 'b4b5', d: 'M492 486H514' },
+        { id: 'b5b6', d: 'M616 486H638' },
+        { id: 'b6b7', d: 'M670 532V549H442V564', label: ['寫入 pending 後開始送', 556, 543, 'middle'] },
+        { id: 'b7b8', d: 'M492 612H514' },
+        { id: 'b8b9', d: 'M616 612H638' },
+        { id: 'b9g2', d: 'M740 612H836', label: ['開 issue', 788, 605, 'middle'] },
+        { id: 'b7g1', d: 'M442 658V736H836', label: ['上傳圖片，取回附件網址', 640, 729, 'middle'] },
+        { id: 'b9b6', d: 'M714 566V534', label: ['created', 720, 561, 'start'] },
+        { id: 'b10b7', dashed: true, d: 'M368 612H390' }
+      ];
+
+      var MODS = {
+        h1: {
+          name: '權限判斷', metric: '宿主的 callback／gate',
+          pkg: { relay: 'framework package', embedded: 'php/laravel' },
+          secs: [['sec-13', '§13 宿主整合指南'], ['sec-4', '§4.3']],
+          desc: [
+            '判斷目前使用者能不能回報（是不是管理員）；不是就什麼都不輸出。',
+            '「誰算管理員」由宿主決定，package 不預設任何角色模型。',
+            'widget 與後端都不認識宿主的角色模型。'
+          ]
+        },
+        h2: {
+          name: 'Token 簽發器', metric: 'HS256，效期 ≤ 900 秒', only: 'relay',
+          off: '內嵌模式沿用宿主 session，不需要 token。',
+          pkg: 'framework package',
+          secs: [['sec-6', '§6 Token']],
+          desc: [
+            '簽 JWT（HS256），每個站台一把 secret（≥ 32 bytes 隨機）。',
+            'header 的 <code>kid</code> 是站台代號，後端依此找 secret。',
+            '<code>exp - iat</code> ≤ 900 秒；<code>jti</code> 是隨機 id，供後端防重放。',
+            'token 只代表「這個人此刻是此站管理員」，回報人資訊也從這裡來。'
+          ]
+        },
+        h3: {
+          name: 'Script 輸出', metric: { relay: '<script> + init()', embedded: 'route + <script> + init()' },
+          pkg: { relay: 'framework package', embedded: 'php/laravel' },
+          secs: [['sec-7', '§7 widget 初始化'], ['sec-13', '§13']],
+          desc: {
+            relay: [
+              '輸出 <code>&lt;script src="{relay}/widget.js"&gt;</code>。',
+              '呼叫 <code>FeedbackWidget.init({ endpoint, getToken })</code>。',
+              'Laravel 以 <code>@feedbackWidget</code> Blade directive 提供。'
+            ],
+            embedded: [
+              '掛上 package 的 route（Laravel：<code>Route::feedbackWidget()</code>）。',
+              '輸出 widget script，呼叫 <code>init({ endpoint: \'/_feedback\', headers: { \'X-CSRF-TOKEN\': … } })</code>。'
+            ]
+          }
+        },
+        w1: {
+          name: '載入器（loader）', metric: '< 5 KB gzip', pkg: 'widget · loader',
+          secs: [['sec-4', '§4.1 widget']],
+          desc: [
+            '建立 Web Component <code>&lt;feedback-widget&gt;</code>，用 Shadow DOM 與宿主樣式隔離。',
+            '顯示右下角浮動按鈕。',
+            '按下時才動態 <code>import()</code> editor（數百 KB），平常不載入。'
+          ]
+        },
+        w2: {
+          name: '錯誤收集器', metric: '最近 20 筆', pkg: 'widget · loader',
+          secs: [['sec-4', '§4.1'], ['sec-7', '§7.3']],
+          desc: [
+            '記錄 console error、<code>error</code> 與 <code>unhandledrejection</code>。',
+            'loader 一載入就開始收集，只保留最近 20 筆。',
+            '送出時放進 payload 的 <code>consoleErrors</code>。'
+          ]
+        },
+        w3: {
+          name: '遮蔽器', metric: 'mask／ignore selector', pkg: 'widget · editor',
+          secs: [['sec-9', '§9 個資遮蔽約定']],
+          desc: [
+            '<strong>mask</strong>：擷圖時以實心色塊覆蓋，保留版面。',
+            '<strong>ignore</strong>：擷圖時整塊移除或留白；widget 自身一律排除。',
+            '預設認得 rrweb、Sentry、LogRocket、Clarity、Hotjar、PostHog 的屬性，清單可增補。',
+            '不自寫遮蔽邏輯，交給 snapdom 的 exclude／filter。',
+            '時程：M1 先做 ignore 與手動塗黑，自動 mask 在 M4。'
+          ]
+        },
+        w4: {
+          name: '擷圖器', metric: 'snapdom，退路 html-to-image', pkg: 'widget · editor',
+          secs: [['sec-4', '§4.1'], ['sec-14', '§14 選型']],
+          desc: [
+            '用 snapdom 擷取 <code>document.documentElement</code> 的可視區。',
+            '失敗時退回 html-to-image。',
+            '站台設定 <code>allowUpload: true</code> 時，另提供「改用上傳圖片」備援。',
+            '不跳權限視窗，可在擷圖前排除和遮蔽 DOM。'
+          ]
+        },
+        w5: {
+          name: '標註器', metric: 'marker.js 3，7 種工具', pkg: 'widget · editor',
+          secs: [['sec-4', '§4.1'], ['sec-14', '§14']],
+          desc: [
+            '在光箱中載入 marker.js 3 編輯器。',
+            '工具：線、手繪、螢光筆、箭頭、文字、框線、塗黑矩形。',
+            '只送出標註後的圖片，不送原圖，避免未遮蔽版本外流。'
+          ]
+        },
+        w6: {
+          name: '回報表單', metric: '標題必填、個資確認必勾', pkg: 'widget · editor',
+          secs: [['sec-4', '§4.1'], ['sec-5', '§5.2']],
+          desc: [
+            '標題（必填）、描述（選填，多行）、類型。',
+            '類型選項由站台設定（<code>GET /v1/config</code>）提供。',
+            '「我已確認圖片中沒有未遮蔽的個資」必須勾選才能送出。',
+            'UI 語系 <code>zh-TW</code>、<code>en</code>，預設讀 <code>&lt;html lang&gt;</code>。'
+          ]
+        },
+        w7: {
+          name: '環境收集器', metric: '頁面、瀏覽器、OS、viewport…', pkg: 'widget · editor',
+          secs: [['sec-7', '§7.3 收集的環境資料']],
+          desc: [
+            '收集：頁面網址與標題、referrer、User-Agent 與解析後的瀏覽器／OS、viewport、screen、devicePixelRatio、語言、時區、客戶端時間、release、widget 版本。',
+            '不收集：cookie、localStorage／sessionStorage、表單輸入值、網路請求、DOM 原始碼。'
+          ]
+        },
+        w8: {
+          name: '送出器', metric: 'multipart：image + payload', pkg: 'widget · editor',
+          secs: [['sec-5', '§5.3 POST /v1/feedback']],
+          desc: {
+            relay: [
+              '<code>POST /v1/feedback</code>，<code>multipart/form-data</code>：<code>image</code> 與 <code>payload</code> 兩個 part。',
+              '送出前呼叫 <code>getToken()</code>（若有）取最新 token，帶 <code>Authorization: Bearer</code>，不帶 cookie。',
+              '收到 401 時重取 token 後重送一次。',
+              '送出中按鈕停用防連點；失敗時保留表單與標註結果，可重試。'
+            ],
+            embedded: [
+              '<code>POST /v1/feedback</code>，<code>multipart/form-data</code>：<code>image</code> 與 <code>payload</code> 兩個 part。',
+              '同源請求，帶宿主 session cookie 與 <code>init({ headers })</code> 給的 <code>X-CSRF-TOKEN</code>。',
+              '送出中按鈕停用防連點；失敗時保留表單與標註結果，可重試。'
+            ]
+          }
+        },
+        b1: {
+          name: '來源檢查', metric: 'CORS + Origin header', only: 'relay',
+          off: '內嵌模式是同源請求，不經過這一關。',
+          pkg: 'relay/server',
+          secs: [['sec-15', '§15 安全與個資'], ['sec-12', '§12 設定檔']],
+          desc: [
+            'CORS 只允許站台設定 <code>origins</code> 列出的來源。',
+            '同時檢查請求的 <code>Origin</code> header。',
+            '不符回 403 <code>origin_not_allowed</code>。'
+          ]
+        },
+        b2: {
+          name: '驗證器', metric: { relay: 'Bearer JWT，容許 60 秒誤差', embedded: 'Session + CSRF' },
+          pkg: { relay: 'relay/core', embedded: 'php/laravel' },
+          secs: [['sec-5', '§5.1 驗證'], ['sec-6', '§6'], ['sec-15', '§15']],
+          desc: {
+            relay: [
+              '依 <code>kid</code> 找到站台 secret，檢查簽章、<code>aud</code>（固定 <code>feedback-relay</code>）與 <code>exp</code>。',
+              '容許 60 秒時鐘誤差。',
+              '<code>jti</code> 在 <code>exp</code> 前拒絕重複使用（防重放）。',
+              '回報人取自 token，不由 payload 提供，避免前端偽造。',
+              '失敗回 401 <code>token_missing</code>／<code>token_invalid</code>／<code>token_expired</code>。'
+            ],
+            embedded: [
+              '用宿主 session 判斷管理員，加 CSRF 驗證（route + middleware）。',
+              '在伺服器端再判斷一次權限，不信任前端。',
+              '回報人取自宿主 session，不由 payload 提供。'
+            ]
+          }
+        },
+        b3: {
+          name: '限流器', metric: '每人每分鐘 5 次',
+          pkg: { relay: 'relay/server', embedded: '' },
+          secs: [['sec-15', '§15'], ['sec-10', '§10']],
+          desc: [
+            '每位使用者每分鐘 5 次（<code>rate_limit_per_minute</code>，可設定）。',
+            '超過回 429 <code>rate_limited</code>，帶 <code>Retry-After</code>；widget 顯示等待秒數。',
+            '用記憶體計數器（單機），不寫資料庫。'
+          ]
+        },
+        b4: {
+          name: '輸入與圖片檢查器', metric: '5 MB、8192×8192',
+          pkg: { relay: 'relay/core', embedded: 'php/core' },
+          secs: [['sec-15', '§15'], ['sec-5', '§5.3 錯誤碼']],
+          desc: [
+            '驗證 payload（400 <code>invalid_payload</code>）與個資確認（422 <code>consent_required</code>）。',
+            '圖片預設上限 5 MB（413 <code>image_too_large</code>）。',
+            '以檔頭 magic bytes 驗證是 PNG、JPEG 或 WebP，不採信宣告的 MIME（422 <code>unsupported_image</code>）。',
+            '尺寸上限 8192×8192。'
+          ]
+        },
+        b5: {
+          name: '備份檔儲存', metric: '開單成功即刪，最長 7 天',
+          pkg: { relay: 'relay/server', embedded: 'php/laravel' },
+          secs: [['sec-10', '§10 送出紀錄']],
+          desc: {
+            relay: [
+              '收件後先把圖片存成備份檔 <code>{data_dir}/pending/{ULID}.{ext}</code>。',
+              '開單成功後立刻刪除。',
+              '5 次重試都失敗時，留到收件滿 7 天（<code>backup_retention_days</code>）才刪，供人工補救。',
+              '一律不對外提供；系統裡只會留著「還沒成功送出」的圖片。'
+            ],
+            embedded: [
+              '收件後先把圖片存成備份檔，放宿主的私有磁碟（例如 Laravel <code>local</code> disk，不是 <code>public</code>）。',
+              '開單成功後立刻刪除。',
+              '5 次重試都失敗時，留到收件滿 7 天才刪，供人工補救。',
+              '一律不對外提供；檔名為 <code>{ULID}.{ext}</code>。'
+            ]
+          }
+        },
+        b6: {
+          name: '送出紀錄', metric: 'pending／created／failed',
+          pkg: { relay: 'relay/server', embedded: 'php/laravel' },
+          secs: [['sec-10', '§10 送出紀錄']],
+          desc: {
+            relay: [
+              '資料表 <code>feedback_submissions</code>，主鍵是 ULID。',
+              '<code>status</code>：<code>pending</code> → <code>created</code>，或 <code>failed</code>。',
+              '存完整 payload（不含圖片）、<code>image_url</code>、issue 編號與網址、重試次數。',
+              'sqlx，SQLite 起步，保留 Postgres 相容。',
+              '含 email，預設保存 365 天，到期清空 <code>reporter_email</code> 與 <code>payload_json</code>。'
+            ],
+            embedded: [
+              '資料表 <code>feedback_submissions</code>，主鍵是 ULID。',
+              '<code>status</code>：<code>pending</code> → <code>created</code>，或 <code>failed</code>。',
+              '存在宿主資料庫（Laravel：一個 migration 加 model）。',
+              '含 email，預設保存 365 天，到期清空 <code>reporter_email</code> 與 <code>payload_json</code>。'
+            ]
+          }
+        },
+        b7: {
+          name: '附件上傳器', metric: '先上傳，才開單',
+          pkg: { relay: 'relay/core', embedded: 'php/core' },
+          secs: [['sec-11', '§11 圖片附件']],
+          desc: [
+            '<code>POST uploads.github.com/user-attachments/assets</code>，把圖片上傳成目標 repo 的附件。',
+            '取回附件網址，記入紀錄的 <code>image_url</code>。',
+            '已有 <code>image_url</code> 時不重傳：附件上傳後無法刪除。',
+            '只接受使用者 token（PAT）；GitHub App installation token 會得到 404。',
+            '檔名由核心產生 <code>{ULID}.{ext}</code>，不含使用者可控字串。'
+          ]
+        },
+        b8: {
+          name: 'Issue 產生器', metric: '標題、label、本文、跳脫',
+          pkg: { relay: 'relay/core', embedded: 'php/core' },
+          secs: [['sec-8', '§8 GitHub issue 格式']],
+          desc: [
+            '標題：<code>[{type label}] {title}</code>。',
+            '本文：描述、圖片、回報人、頁面、環境資料、console errors，尾端帶紀錄 id 註解。',
+            '跳脫：<code>@xxx</code> 不觸發通知、表格值跳脫、code fence 長度、圖片網址只接受附件端點回傳的 <code>https://</code>。',
+            '以 <code>spec/conformance/</code> 為唯一標準，Rust 與 PHP 產出必須逐字一致。'
+          ]
+        },
+        b9: {
+          name: 'GitHub 開單 client', metric: '持有 PAT',
+          pkg: { relay: 'relay/core', embedded: 'php/core' },
+          secs: [['sec-11', '§11'], ['sec-14', '§14 選型'], ['sec-15', '§15']],
+          desc: [
+            '<code>POST /repos/{owner}/{repo}/issues</code> 開 issue、加 label。',
+            'PAT 來自專用機器帳號，fine-grained、限定單一 repo、需 write 權限、設定到期日。',
+            'GitHub token 只存在後端；widget 原始碼與回應都不得包含它。',
+            '成功回 201：紀錄 id 與 issue 編號、網址。'
+          ]
+        },
+        b10: {
+          name: '重試器', metric: '指數退避，最多 5 次',
+          pkg: { relay: 'relay/server', embedded: '' },
+          secs: [['sec-10', '§10'], ['sec-16', '§16 里程碑 M3']],
+          desc: [
+            '背景工作，以指數退避重試 <code>failed</code> 的紀錄，最多 5 次。',
+            '以紀錄 id 判斷，成功時不會重複開單。',
+            '紀錄已有 <code>image_url</code> 時只重試開單，不重傳圖片。',
+            '5 次都失敗後不再自動重試，紀錄維持 <code>failed</code>。'
+          ]
+        },
+        b11: {
+          name: '站台設定端點', metric: 'GET /v1/config',
+          pkg: { relay: 'relay/server', embedded: 'php/laravel' },
+          secs: [['sec-5', '§5.2 GET /v1/config'], ['sec-12', '§12 設定檔']],
+          desc: {
+            relay: [
+              'widget 開啟光箱時取得站台設定。',
+              '回傳：類型選項、<code>allowUpload</code>、<code>maxImageBytes</code>、<code>maskSelectors</code>、<code>ignoreSelectors</code>。',
+              '來源是 relay 的 TOML 設定檔，每個站台一段 <code>[sites.*]</code>。'
+            ],
+            embedded: [
+              'widget 開啟光箱時取得站台設定。',
+              '回傳：類型選項、<code>allowUpload</code>、<code>maxImageBytes</code>、<code>maskSelectors</code>、<code>ignoreSelectors</code>。',
+              '來源是 <code>config/feedback-widget.php</code>（一個站台，不需要 <code>sites</code> 層）。'
+            ]
+          }
+        },
+        b12: {
+          name: '靜態資源', metric: '/widget.js、editor、/healthz', only: 'relay',
+          off: '內嵌模式由宿主自己輸出 widget script。',
+          pkg: 'relay/server',
+          secs: [['sec-5', '§5.4 靜態資源']],
+          desc: [
+            '<code>GET /widget.js</code>：loader，<code>Cache-Control: max-age=300</code>。',
+            '<code>GET /widget/editor.&lt;hash&gt;.js</code>：editor，immutable 長快取。',
+            '<code>GET /healthz</code>。'
+          ]
+        },
+        g1: {
+          name: '附件端點', metric: 'uploads.github.com', pkg: '',
+          secs: [['sec-11', '§11 圖片附件'], ['sec-17', '§17 待查證']],
+          desc: [
+            '與 <code>gh issue create --attach</code> 是同一個端點，不在官方 REST API 文件中。',
+            'GitHub 端圖片上限 10 MB（本專案預設 5 MB）。',
+            '附件無法刪除；可見度跟隨 repo（尚未實測）。',
+            '不支援 GitHub Enterprise Server。'
+          ]
+        },
+        g2: {
+          name: 'Issues REST API', metric: '目標 repo 的 issue', pkg: '',
+          secs: [['sec-8', '§8 GitHub issue 格式']],
+          desc: [
+            '正式 REST API：<code>POST /repos/{owner}/{repo}/issues</code>。',
+            '目標 repo 建議設為私有；公開 repo 的擷圖等於永久公開。'
+          ]
+        }
+      };
+
+      function pick(v) {
+        if (v === null || v === undefined) return '';
+        if (typeof v === 'string' || Array.isArray(v)) return v;
+        return v[state.mode];
+      }
+
+      function isOff(id) {
+        var m = MODS[id];
+        return !!m.only && m.only !== state.mode;
+      }
+
+      function s(tag, attrs, text) {
+        var node = document.createElementNS(NS, tag);
+        if (attrs) Object.keys(attrs).forEach(function (k) { node.setAttribute(k, attrs[k]); });
+        if (text !== undefined) node.textContent = text;
+        return node;
+      }
+
+      function buildSteps() {
+        var r = state.mode === 'relay';
+        var steps = [];
+        function add(ids, e, t, fail, ef) {
+          steps.push({ ids: ids, e: e || [], t: t, fail: fail || [], ef: ef || [] });
+        }
+        add(['h1'], [], '宿主判斷目前使用者是不是管理員。不是的話什麼都不輸出，流程到此為止。');
+        if (r) {
+          add(['h2'], ['h1h2'], '宿主為這位管理員簽一張短效 token（HS256，效期最長 900 秒）。');
+          add(['h3'], ['h2h3', 'h1h3'], '宿主輸出 <script>，指向 relay 的 widget.js，並把 token 交給 widget。');
+          add(['w1', 'b12'], ['h3w1', 'b12w1'], '瀏覽器向 relay 的靜態資源下載 widget.js，載入器顯示右下角浮動按鈕。');
+        } else {
+          add(['h3'], ['h1h3'], '宿主輸出 widget script，並以 init() 指定 endpoint 為 /_feedback、帶上 X-CSRF-TOKEN。');
+          add(['w1'], ['h3w1'], '載入器顯示右下角浮動按鈕。');
+        }
+        add(['w2'], ['w1w2'], '錯誤收集器隨載入器一起啟動，開始記錄 console error，只留最近 20 筆。');
+        add(['w1'], [], '管理員按下按鈕，載入器才動態 import() editor（數百 KB，平常不載入）。');
+        add(['w3'], ['w1w3'], '遮蔽器依 mask／ignore selector 處理頁面：mask 蓋上實心色塊，ignore 整塊移除，widget 自身也排除。');
+        add(['w4'], ['w3w4'], '擷圖器用 snapdom 擷取可視區；失敗時退回 html-to-image。');
+        add(['w5'], ['w4w5'], '光箱開啟，標註器（marker.js 3）提供 7 種工具，可手動塗黑個資。');
+        add(['w6', 'b11'], ['w5w6', 'b11w6'], '回報表單：填標題、描述、類型，並勾選個資確認。類型選項來自後端的站台設定（GET /v1/config）。');
+        add(['w7', 'w2'], ['w2w7'], '環境收集器整理瀏覽器、OS、viewport 等資料，連同錯誤收集器的最近 20 筆錯誤。');
+        add(['w8'], ['w6w8', 'w7w8'], r
+          ? '送出器先呼叫 getToken() 取最新 token，再把標註後的圖片（image）與表單、環境資料（payload）組成 multipart。'
+          : '送出器把標註後的圖片（image）與表單、環境資料（payload）組成 multipart。');
+        if (r) {
+          add(['b1'], ['post'], '請求送到 relay。來源檢查：Origin 必須在站台設定的 origins 清單內，否則回 403。');
+          add(['b2'], ['b1b2'], '驗證器檢查 token 的簽章、aud、exp 與 jti（防重放），並從 token 取得回報人。失敗回 401。');
+        } else {
+          add(['b2'], ['post'], '同源請求送到宿主站。驗證器用 session 與 CSRF 驗證，並在伺服器端再判斷一次是否為管理員；回報人取自 session。');
+        }
+        add(['b3'], ['b2b3'], '限流器：每位使用者每分鐘最多 5 次，超過回 429 並帶 Retry-After。');
+        add(['b4'], ['b3b4'], '輸入與圖片檢查器：驗 payload 與個資確認；圖片須 ≤ 5 MB、檔頭是 PNG／JPEG／WebP、尺寸 ≤ 8192×8192。');
+        add(['b5'], ['b4b5'], '圖片先存成備份檔。');
+        add(['b6'], ['b5b6'], '送出紀錄寫入一筆 pending。');
+        if (state.scenario === 'ok') {
+          add(['b7', 'g1'], ['b6b7', 'b7g1'], '附件上傳器把圖片上傳成 GitHub 附件，取回附件網址並記入紀錄的 image_url。');
+          add(['b8'], ['b7b8'], 'Issue 產生器組出標題、label 與本文，並套用跳脫規則。');
+          add(['b9', 'g2'], ['b8b9', 'b9g2'], '開單 client 以 PAT 開 issue、加 label。');
+          add(['b6', 'b5'], ['b9b6'], '送出紀錄更新為 created，備份檔立刻刪除；後端回 201，帶紀錄 id 與 issue 編號、網址。');
+          add(['w8'], [], '送出器收到結果，呼叫 onSubmitted。流程結束。');
+        } else {
+          add(['b7', 'g1'], ['b6b7'], '上傳附件失敗（開 issue 失敗時的處理相同）。', ['b7'], ['b7g1']);
+          add(['b6', 'b5'], [], '送出紀錄記為 failed，備份檔保留；後端回 502（upload_failed／github_failed）。', ['b6']);
+          add(['w8'], [], '送出器保留表單與標註結果，使用者可以重試；紀錄已存，後端也會自己重試。');
+          add(['b10', 'b6'], [], '重試器在背景以指數退避重試 failed 的紀錄，最多 5 次；以紀錄 id 判斷，不會重複開單。');
+          add(['b10', 'b7'], ['b10b7'], '重試器重跑上傳與開單。紀錄已有 image_url 時只重試開單，不重傳圖片，因為附件上傳後無法刪除。');
+          add(['b7', 'g1', 'b8', 'b9', 'g2'], ['b7g1', 'b7b8', 'b8b9', 'b9g2'], '重試成功：圖片上傳、issue 開出。');
+          add(['b6', 'b5'], ['b9b6'], '紀錄更新為 created，備份檔刪除。');
+          add(['b10', 'b5', 'b6'], [], '若 5 次都失敗：不再自動重試，備份檔留到收件滿 7 天才刪除供人工補救，紀錄維持 failed。', ['b6']);
+        }
+        return steps;
+      }
+
+      // 建立一次 SVG，之後只更新文字與狀態
+      var defs = s('defs');
+      [['cmArr', 'cm-arr'], ['cmArrOn', 'cm-arr-on'], ['cmArrFail', 'cm-arr-fail']].forEach(function (m) {
+        var mk = s('marker', { id: m[0], viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '8', markerHeight: '8', markerUnits: 'userSpaceOnUse', orient: 'auto' });
+        mk.appendChild(s('path', { d: 'M0 1L10 5L0 9z', 'class': m[1] }));
+        defs.appendChild(mk);
+      });
+      svg.appendChild(defs);
+
+      var zoneNodes = {};
+      Object.keys(ZONES).forEach(function (k) {
+        var z = ZONES[k];
+        var g = s('g', { 'class': 'cm-zone' });
+        var lx, ly, rx;
+        if (z.rect) {
+          g.appendChild(s('rect', { x: z.rect[0], y: z.rect[1], width: z.rect[2], height: z.rect[3], rx: 10, 'class': 'cm-zone-shape' }));
+          lx = z.rect[0] + 12; ly = z.rect[1] + 22; rx = z.rect[0] + z.rect[2] - 10;
+        } else {
+          g.appendChild(s('path', { d: z.path, 'class': 'cm-zone-shape' }));
+          lx = z.label[0]; ly = z.label[1]; rx = z.label[2];
+        }
+        var t = s('text', { x: lx, y: ly, 'class': 'cm-zone-title' });
+        var w = s('text', { x: rx, y: ly, 'text-anchor': 'end', 'class': 'cm-zone-where' });
+        g.appendChild(t);
+        g.appendChild(w);
+        svg.appendChild(g);
+        zoneNodes[k] = { title: t, where: w };
+      });
+
+      var edgeNodes = {};
+      EDGES.forEach(function (e) {
+        var g = s('g', { 'class': 'cm-edge' + (e.dashed ? ' is-dashed' : '') });
+        var p = s('path');
+        g.appendChild(p);
+        var t = null;
+        if (e.label) {
+          t = s('text', { x: e.label[1], y: e.label[2], 'text-anchor': e.label[3] });
+          g.appendChild(t);
+        }
+        svg.appendChild(g);
+        edgeNodes[e.id] = { g: g, path: p, text: t, def: e };
+      });
+
+      var modNodes = {};
+      Object.keys(POS).forEach(function (id) {
+        var x = POS[id][0];
+        var y = POS[id][1];
+        var g = s('g', { 'class': 'cm-node', 'data-mod': id, role: 'button', tabindex: '0', 'aria-pressed': 'false', transform: 'translate(' + x + ' ' + y + ')' });
+        g.appendChild(s('rect', { width: W, height: H, rx: 9, 'class': 'cm-box' }));
+        g.appendChild(s('rect', { x: 30, y: 8, width: 40, height: 40, rx: 9, 'class': 'cm-tile' }));
+        var ico = s('g', { transform: 'translate(38 16)' });
+        ico.appendChild(s('path', { d: ICON[id].s, 'class': 'cm-ico' }));
+        if (ICON[id].f) ico.appendChild(s('path', { d: ICON[id].f, 'class': 'cm-ico-f' }));
+        g.appendChild(ico);
+        var n = s('text', { x: W / 2, y: 66, 'class': 'cm-name' });
+        var m = s('text', { x: W / 2, y: 82, 'class': 'cm-metric' });
+        g.appendChild(n);
+        g.appendChild(m);
+        svg.appendChild(g);
+        modNodes[id] = { g: g, name: n, metric: m };
+      });
+
+      var detail = document.getElementById('cmapDetail');
+      var stepText = document.getElementById('cmapStepText');
+      var stepCount = document.getElementById('cmapStepCount');
+      var steps = buildSteps();
+
+      function renderDetail() {
+        var id = state.selected;
+        if (!id) {
+          detail.innerHTML =
+            '<h3>怎麼讀這張圖</h3>' +
+            '<ul>' +
+            '<li>四個區塊是程式實際執行的位置：宿主站、瀏覽器、後端、GitHub。</li>' +
+            '<li>每個圖示是一個元件，下方是名稱與它的關鍵數字。</li>' +
+            '<li>箭頭是一筆回報的流向，由左上的「權限判斷」開始，到右下的 GitHub 結束。</li>' +
+            '<li>點元件看職責、所屬套件與對應章節；用「下一步」或「播放」讓箭頭依序亮起。</li>' +
+            '</ul>';
+          return;
+        }
+        var m = MODS[id];
+        var pkg = pick(m.pkg);
+        var html = '<button type="button" class="btn-ghost cmap-detail-close" data-act="close">關閉</button>' +
+          '<div class="cmap-detail-where"></div><h3></h3>';
+        if (isOff(id)) html += '<p class="cmap-detail-off"></p>';
+        html += '<ul>' + pick(m.desc).map(function (d) { return '<li>' + d + '</li>'; }).join('') + '</ul>';
+        html += '<div class="cmap-detail-links">' + m.secs.map(function (sec) {
+          return '<a href="#' + sec[0] + '">' + sec[1] + '</a>';
+        }).join('') + '</div>';
+        detail.innerHTML = html;
+        detail.querySelector('.cmap-detail-where').textContent = pick(ZONES[id.charAt(0)].title) + (pkg ? ' · ' + pkg : '');
+        detail.querySelector('h3').textContent = m.name;
+        if (isOff(id)) {
+          detail.querySelector('.cmap-detail-off').textContent = '此模式不使用：' + m.off + '以下是中繼模式的職責。';
+        }
+      }
+
+      function renderStep() {
+        var cur = state.step >= 0 ? steps[state.step] : null;
+        Object.keys(modNodes).forEach(function (id) {
+          var on = !!cur && cur.ids.indexOf(id) !== -1;
+          var fail = on && cur.fail.indexOf(id) !== -1;
+          modNodes[id].g.classList.toggle('is-step', on && !fail);
+          modNodes[id].g.classList.toggle('is-fail', fail);
+        });
+        Object.keys(edgeNodes).forEach(function (id) {
+          edgeNodes[id].g.classList.toggle('is-step', !!cur && cur.e.indexOf(id) !== -1);
+          edgeNodes[id].g.classList.toggle('is-fail', !!cur && cur.ef.indexOf(id) !== -1);
+        });
+        stepCount.textContent = (state.step + 1) + ' / ' + steps.length;
+        stepText.textContent = cur ? cur.t : '按「下一步」或「播放」，依序看一筆回報從宿主站到 GitHub 經過哪些元件。';
+        root.querySelector('[data-act="prev"]').disabled = state.step <= 0;
+        root.querySelector('[data-act="next"]').disabled = state.step >= steps.length - 1;
+        root.querySelector('[data-act="reset"]').disabled = state.step < 0 && !state.selected;
+        root.querySelector('[data-act="play"]').textContent = state.timer ? '暫停' : '播放';
+      }
+
+      function render() {
+        root.setAttribute('data-mode', state.mode);
+        root.querySelectorAll('[data-act][data-val]').forEach(function (b) {
+          b.setAttribute('aria-pressed', String(state[b.getAttribute('data-act')] === b.getAttribute('data-val')));
+        });
+        Object.keys(ZONES).forEach(function (k) {
+          zoneNodes[k].title.textContent = pick(ZONES[k].title);
+          zoneNodes[k].where.textContent = pick(ZONES[k].where);
+        });
+        Object.keys(edgeNodes).forEach(function (id) {
+          var e = edgeNodes[id];
+          e.g.classList.toggle('is-off', !!e.def.only && e.def.only !== state.mode);
+          e.path.setAttribute('d', pick(e.def.d));
+          if (e.text) e.text.textContent = pick(e.def.label[0]);
+        });
+        Object.keys(modNodes).forEach(function (id) {
+          var n = modNodes[id];
+          var off = isOff(id);
+          n.name.textContent = SHORT[id][0];
+          n.metric.textContent = off ? '此模式不使用' : pick(SHORT[id][1]);
+          n.g.classList.toggle('is-off', off);
+          n.g.setAttribute('aria-pressed', String(state.selected === id));
+          n.g.setAttribute('aria-label', MODS[id].name + '：' + n.metric.textContent);
+        });
+        renderDetail();
+        renderStep();
+      }
+
+      function stop() {
+        if (state.timer) {
+          clearInterval(state.timer);
+          state.timer = null;
+        }
+      }
+
+      function goStep(i) {
+        state.step = Math.max(-1, Math.min(steps.length - 1, i));
+        if (state.step >= 0) state.selected = steps[state.step].ids[0];
+        render();
+      }
+
+      function rebuildSteps() {
+        stop();
+        steps = buildSteps();
+        state.step = -1;
+      }
+
+      function toggleMod(id) {
+        state.selected = state.selected === id ? null : id;
+        render();
+      }
+
+      svg.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        var node = e.target.closest('[data-mod]');
+        if (!node) return;
+        e.preventDefault();
+        toggleMod(node.getAttribute('data-mod'));
+      });
+
+      root.addEventListener('click', function (e) {
+        var modNode = e.target.closest('[data-mod]');
+        if (modNode) {
+          toggleMod(modNode.getAttribute('data-mod'));
+          return;
+        }
+        var btn = e.target.closest('[data-act]');
+        if (!btn) return;
+        var act = btn.getAttribute('data-act');
+        var val = btn.getAttribute('data-val');
+        if (act === 'mode' || act === 'scenario') {
+          if (state[act] === val) return;
+          state[act] = val;
+          rebuildSteps();
+          render();
+        } else if (act === 'close') {
+          state.selected = null;
+          render();
+        } else if (act === 'prev') {
+          stop();
+          goStep(state.step - 1);
+        } else if (act === 'next') {
+          stop();
+          goStep(state.step + 1);
+        } else if (act === 'reset') {
+          stop();
+          state.selected = null;
+          goStep(-1);
+        } else if (act === 'play') {
+          if (state.timer) {
+            stop();
+            render();
+            return;
+          }
+          if (state.step >= steps.length - 1) state.step = -1;
+          state.timer = setInterval(function () {
+            if (state.step >= steps.length - 1) {
+              stop();
+              render();
+              return;
+            }
+            goStep(state.step + 1);
+          }, 2600);
+          goStep(state.step + 1);
+        }
+      });
+
+      render();
     })();
   </script>
 </body>
