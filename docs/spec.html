@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>feedback-widget 規格與策略（草案 v0.1）</title>
+  <title>feedback-widget 規格與策略（草案 v0.2）</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -800,7 +800,7 @@
       <div class="brand">
         <span class="brand-dot" aria-hidden="true"></span>
         <span>feedback-widget</span>
-        <span class="badge hide-sm">草案 v0.1</span>
+        <span class="badge hide-sm">草案 v0.2</span>
       </div>
       <div class="topbar-actions">
         <button type="button" class="btn-ghost mobile-toc-btn" id="tocToggle" aria-expanded="false" aria-controls="sidebarToc">目錄</button>
@@ -813,7 +813,7 @@
     <!-- 頂部摘要 -->
     <section class="hero" id="summary">
       <div class="hero-meta">
-        <span class="badge">草案 v0.1（2026-11-23）</span>
+        <span class="badge">草案 v0.2（2026-11-27）</span>
         <span>尚未動工，本文件是開發前的共識紀錄</span>
       </div>
       <h1>feedback-widget 規格與策略</h1>
@@ -851,9 +851,9 @@
             <span class="badge">Bearer JWT（HS256）</span>
           </div>
           <ul>
-            <li>獨立 Rust 中繼服務（<code>axum</code>，Docker 部署），集中管理圖片與 GitHub 憑證。</li>
+            <li>獨立 Rust 中繼服務（<code>axum</code>，Docker 部署），集中管理 GitHub 憑證，把圖片上傳成 GitHub 附件並開 issue。</li>
             <li>宿主站透過 framework package 判斷管理員、輸出 <code>&lt;script&gt;</code> 並簽發短效 HS256 token。</li>
-            <li>適合多個站共用，或想直接以 relay 作為自架圖床（<code>local</code> driver 公開網址）。</li>
+            <li>適合多個站共用、想集中管理 GitHub 憑證的情境。</li>
           </ul>
         </div>
         <div class="mode-card embedded">
@@ -867,6 +867,10 @@
             <li>適合單一站、不想多維護一個服務的情境；送出紀錄存宿主資料庫。</li>
           </ul>
         </div>
+      </div>
+
+      <div class="callout">
+        <strong>v0.2：</strong>圖片改為直接上傳成 GitHub 附件，移除圖床 driver 與 GitHub App 驗證（見 <code>docs/adr/0001-images-as-github-attachments.md</code>）。
       </div>
 
       <div class="callout">
@@ -886,7 +890,7 @@
         <div class="diagram-card">
           <div class="diagram-title">
             <h3>中繼模式（relay mode）</h3>
-            <span class="badge">多站共用 · 集中管理憑證與圖床</span>
+            <span class="badge">多站共用 · 集中管理 GitHub 憑證</span>
           </div>
           <div class="svg-wrap">
             <svg viewBox="0 0 880 330" role="img" aria-label="中繼模式架構流程圖" xmlns="http://www.w3.org/2000/svg">
@@ -915,10 +919,10 @@
               <rect x="490" y="64" width="370" height="12" fill="var(--accent-soft)" />
               <text x="510" y="62" fill="var(--accent)" font-size="14" font-weight="700">relay-server (axum)</text>
               <text x="510" y="106" fill="var(--text)" font-size="13">• 驗 token / CORS / 限流</text>
-              <text x="510" y="138" fill="var(--text)" font-size="13">• ImageStore driver → 圖片 URL</text>
+              <text x="510" y="138" fill="var(--text)" font-size="13">• 圖片上傳為 GitHub 附件</text>
               <text x="510" y="170" fill="var(--text)" font-size="13">• GitHub client → 開 issue</text>
               <text x="510" y="202" fill="var(--text)" font-size="13">• SQLite / Postgres 送出紀錄</text>
-              <text x="510" y="234" fill="var(--text)" font-size="13">• 提供 /widget.js、/f/{key}</text>
+              <text x="510" y="234" fill="var(--text)" font-size="13">• 提供 /widget.js</text>
               <text x="510" y="266" fill="var(--text-muted)" font-size="12">• /widget/editor.&lt;hash&gt;.js、/healthz</text>
 
               <!-- Widget (Browser) -->
@@ -965,7 +969,7 @@
               <rect x="110" y="56" width="660" height="12" fill="var(--accent-2-soft)" />
               <text x="132" y="56" fill="var(--accent-2)" font-size="14" font-weight="700">framework package（例如 php/laravel）</text>
               <text x="132" y="88" fill="var(--text)" font-size="13">• route + middleware：session 判斷管理員 + CSRF</text>
-              <text x="132" y="110" fill="var(--text)" font-size="13">• php/core：驗證輸入、ImageStore、GitHub 開單</text>
+              <text x="132" y="110" fill="var(--text)" font-size="13">• php/core：驗證輸入、上傳附件、GitHub 開單</text>
               <text x="132" y="132" fill="var(--text)" font-size="13">• 宿主資料庫存送出紀錄</text>
 
               <!-- Widget (Browser) -->
@@ -1000,7 +1004,7 @@
           <li><a href="#sec-8"><span class="toc-num">§8</span>GitHub issue 格式</a></li>
           <li><a href="#sec-9"><span class="toc-num">§9</span>個資遮蔽約定</a></li>
           <li><a href="#sec-10"><span class="toc-num">§10</span>送出紀錄（資料表）</a></li>
-          <li><a href="#sec-11"><span class="toc-num">§11</span>圖床 driver</a></li>
+          <li><a href="#sec-11"><span class="toc-num">§11</span>圖片附件（GitHub attachments）</a></li>
           <li><a href="#sec-12"><span class="toc-num">§12</span>設定檔（relay）</a></li>
           <li><a href="#sec-13"><span class="toc-num">§13</span>宿主整合指南</a></li>
           <li><a href="#sec-14"><span class="toc-num">§14</span>選型與替代方案</a></li>
@@ -1022,7 +1026,7 @@
           <ul>
             <li><strong>與宿主低耦合</strong>：widget 不認識 Laravel／Drupal／WordPress／Rust；宿主只負責「判斷誰能用」和「提供 endpoint 與驗證方式」。</li>
             <li><strong>不重造輪子</strong>：擷圖用 snapdom、標註用 marker.js 3、GitHub 用各語言成熟 client。</li>
-            <li><strong>金鑰不進瀏覽器</strong>：GitHub token、圖床金鑰只存在後端。</li>
+            <li><strong>金鑰不進瀏覽器</strong>：GitHub token 只存在後端。</li>
             <li><strong>同一份規格、多套實作</strong>：Rust 中繼服務與各語言 framework package 以 <code>spec/</code> 的 HTTP 規格與 conformance 測試資料為準。</li>
           </ul>
 
@@ -1033,6 +1037,7 @@
             <li>非管理員（一般訪客）回報。</li>
             <li>在 issue 上指派 assignee（回報人多半沒有 GitHub 帳號，寫在本文）。</li>
             <li>npm／Packagist 正式發佈（初期以 GitHub release、VCS repository 引用）。</li>
+            <li>GitHub Enterprise Server（沒有附件上傳端點，見 <a href="#sec-11">§11</a>）。</li>
           </ul>
         </article>
 
@@ -1054,16 +1059,12 @@
               </thead>
               <tbody>
                 <tr>
-                  <td>多個站共用、想集中管理圖片與 GitHub 憑證</td>
+                  <td>多個站共用、想集中管理 GitHub 憑證</td>
                   <td>中繼模式</td>
                 </tr>
                 <tr>
                   <td>單一站、不想多維護一個服務</td>
                   <td>內嵌模式</td>
-                </tr>
-                <tr>
-                  <td>想用自架圖床（<code>local</code> driver 公開網址）</td>
-                  <td>中繼模式（relay 本身就是圖床），或內嵌模式存宿主 public disk</td>
                 </tr>
               </tbody>
             </table>
@@ -1083,8 +1084,8 @@
               <button type="button" class="copy-btn">複製</button>
             </div>
             <pre><code>widget/            TypeScript：loader（浮動按鈕）與 editor（擷圖＋標註＋表單）
-relay/core/        Rust lib：輸入驗證、token 驗簽、ImageStore drivers、GitHub client、issue 格式
-relay/server/      Rust bin：axum HTTP、DB（SQLite／Postgres）、限流、靜態提供 widget 與 local 圖片、Dockerfile
+relay/core/        Rust lib：輸入驗證、token 驗簽、GitHub 附件上傳與開單、issue 格式
+relay/server/      Rust bin：axum HTTP、DB（SQLite／Postgres）、限流、靜態提供 widget、圖片備份檔與重試、Dockerfile
 php/core/          框架無關 PHP 核心（PSR-7／PSR-17／PSR-18）：與 relay/core 同職責
 php/laravel/       Laravel adapter：ServiceProvider、route、middleware、Blade directive、migration
 spec/              openapi.yaml、token.md、db-schema.md、masking.md、conformance/
@@ -1123,10 +1124,10 @@ SPEC.md            本文件</code></pre>
           <h3>4.2 relay（Rust 中繼服務）</h3>
           <ul>
             <li>驗 token（<a href="#sec-6">§6</a>）、CORS（只允許站台設定的 origin）、請求大小與圖片格式檢查。</li>
-            <li>依站台設定呼叫 ImageStore driver 上傳圖片，取得公開網址。</li>
-            <li>組 issue 本文（<a href="#sec-8">§8</a>），以 PAT 或 GitHub App 開 issue、加 label。</li>
-            <li>寫入送出紀錄（<a href="#sec-10">§10</a>），限流、失敗重試。</li>
-            <li>提供 <code>/widget.js</code>（loader）、<code>/widget/editor.&lt;hash&gt;.js</code>、<code>/f/{key}</code>（local driver 圖片）、<code>/healthz</code>。</li>
+            <li>把圖片上傳成目標 repo 的 GitHub 附件，取得附件網址（<a href="#sec-11">§11</a>）。</li>
+            <li>組 issue 本文（<a href="#sec-8">§8</a>），以 PAT 開 issue、加 label。</li>
+            <li>寫入送出紀錄與圖片備份檔（<a href="#sec-10">§10</a>），限流、失敗重試。</li>
+            <li>提供 <code>/widget.js</code>（loader）、<code>/widget/editor.&lt;hash&gt;.js</code>、<code>/healthz</code>。</li>
           </ul>
 
           <h3>4.3 framework package（以 php 為例）</h3>
@@ -1311,7 +1312,7 @@ SPEC.md            本文件</code></pre>
                 </tr>
                 <tr>
                   <td><code>502</code></td>
-                  <td><code>storage_failed</code>／<code>github_failed</code></td>
+                  <td><code>upload_failed</code>／<code>github_failed</code></td>
                   <td>保留表單，可重試；紀錄已存，後端也會重試</td>
                 </tr>
               </tbody>
@@ -1322,7 +1323,6 @@ SPEC.md            本文件</code></pre>
           <ul>
             <li><code>GET /widget.js</code>：loader，<code>Cache-Control: max-age=300</code>。</li>
             <li><code>GET /widget/editor.&lt;hash&gt;.js</code>：editor，immutable 長快取。</li>
-            <li><code>GET /f/{key}</code>：local driver 圖片，<code>X-Robots-Tag: noindex</code>、不開目錄列表。</li>
             <li><code>GET /healthz</code>。</li>
           </ul>
         </article>
@@ -1525,7 +1525,7 @@ FeedbackWidget.open()                             // 宿主可自訂觸發點</c
             <li>使用者輸入的 <code>@xxx</code> 轉成 <code>@&#8203;xxx</code>，避免通知不相干的 GitHub 使用者。</li>
             <li>表格內的值跳脫 <code>|</code> 與換行，HTML 實體化 <code>&lt;</code>、<code>&gt;</code>。</li>
             <li>code fence 長度取「內容中最長連續反引號 + 1」（至少 3）。</li>
-            <li>圖片網址只接受 driver 回傳的 <code>https://</code> 網址。</li>
+            <li>圖片網址只接受 GitHub 附件端點回傳的 <code>https://</code> 網址。</li>
             <li>尾端 HTML 註解帶送出紀錄 id，方便日後從 issue 反查。email 不寫入 issue（只存送出紀錄），除非站台設定 <code>showReporterEmail: true</code>。</li>
           </ul>
         </article>
@@ -1618,9 +1618,14 @@ FeedbackWidget.open()                             // 宿主可自訂觸發點</c
                   <td>完整 payload（不含圖片）</td>
                 </tr>
                 <tr>
-                  <td><code>image_driver</code>、<code>image_url</code>、<code>image_delete_ref</code></td>
+                  <td><code>image_url</code></td>
                   <td>text</td>
-                  <td>刪除資訊：local 路徑、S3 key、imgur deletehash、通用 HTTP 刪除網址</td>
+                  <td>GitHub 附件網址，上傳成功後才有值</td>
+                </tr>
+                <tr>
+                  <td><code>image_backup_path</code></td>
+                  <td>text</td>
+                  <td>圖片備份檔路徑；開單成功或備份到期刪除後清空</td>
                 </tr>
                 <tr>
                   <td><code>status</code></td>
@@ -1647,90 +1652,51 @@ FeedbackWidget.open()                             // 宿主可自訂觸發點</c
           </div>
 
           <p>另有 <code>token_jti</code>（防重放，可定期清除過期資料）。限流用記憶體計數器（單機）即可，不寫資料庫。</p>
-          <p>流程：收件 → 寫 <code>pending</code> → 上傳圖片 → 開 issue → 更新為 <code>created</code>。GitHub 或圖床失敗時記為 <code>failed</code> 並回 502；relay 背景工作以指數退避重試 <code>failed</code>（最多 5 次），成功時不會重複開單（以紀錄 id 判斷）。</p>
+          <p>流程：收件 → 圖片存成備份檔並寫 <code>pending</code> → 上傳成 GitHub 附件（成功就記下 <code>image_url</code>）→ 開 issue → 更新為 <code>created</code> 並立刻刪除備份檔。</p>
+          <ul>
+            <li>上傳附件或開 issue 失敗時記為 <code>failed</code> 並回 502；背景工作以指數退避重試 <code>failed</code>（最多 5 次），成功時不會重複開單（以紀錄 id 判斷）。</li>
+            <li>紀錄已有 <code>image_url</code> 時只重試開單，不重傳圖片：附件上傳後無法刪除，重傳會留下沒人引用的檔案。</li>
+            <li>5 次都失敗後不再自動重試，備份檔留到收件滿 7 天（<code>backup_retention_days</code>，可設定）才刪除，供人工補救；紀錄維持 <code>failed</code>。</li>
+            <li>備份檔位置：relay 放 <code>{data_dir}/pending/</code>；內嵌模式放宿主的私有磁碟（例如 Laravel <code>local</code> disk，不是 <code>public</code>）。一律不對外提供，檔名為 <code>{ULID}.{ext}</code>。</li>
+            <li>系統裡因此只會留著「還沒成功送出」的圖片。</li>
+          </ul>
         </article>
 
         <!-- §11 -->
         <article class="chapter" id="sec-11">
           <div class="chapter-head">
             <span class="chapter-sec">§11</span>
-            <h2>圖床 driver</h2>
+            <h2>圖片附件（GitHub attachments）</h2>
           </div>
-          <p>介面（Rust trait／PHP interface 同義）：</p>
+          <p>圖片直接上傳成目標 repo 的 GitHub 附件，不經任何圖床；issue 本文引用回傳的附件網址。決策背景與取捨見 <code>docs/adr/0001-images-as-github-attachments.md</code>。</p>
           <div class="code-block">
             <div class="code-header">
-              <span>interface</span>
+              <span>http</span>
               <button type="button" class="copy-btn">複製</button>
             </div>
-            <pre><code>put(bytes, mime, key) -&gt; { url: https URL, deleteRef: string|null }
-delete(deleteRef) -&gt; ()</code></pre>
-          </div>
-          <p><code>key</code> 由核心產生：<code>{site}/{yyyy}/{mm}/{ULID}.{ext}</code>，不含使用者可控字串。</p>
-          <p>GitHub 要顯示 issue 圖片，必須由 camo 代理抓得到，所以<strong>圖片一定是公開網址</strong>；安全性只靠網址無法猜測，以及可以事後刪除。</p>
+            <pre><code>POST https://uploads.github.com/user-attachments/assets
+       ?name={ULID}.{ext}&amp;content_type={mime}&amp;repository_id={repo 的數字 id}
+Authorization: token {PAT}
+Content-Type: application/octet-stream
+Content-Length: {bytes}
+Accept: application/vnd.github+json
 
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>driver</th>
-                  <th>說明</th>
-                  <th>設定</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><code>local</code></td>
-                  <td>relay：存在磁碟，由 <code>/f/{key}</code> 公開提供；內嵌模式：存宿主 public disk（例如 Laravel <code>public</code> disk）</td>
-                  <td><code>root</code>、<code>publicBaseUrl</code></td>
-                </tr>
-                <tr>
-                  <td><code>s3</code></td>
-                  <td>S3 相容（AWS S3、Cloudflare R2、Garage、MinIO），公開 bucket 或公開網域前綴</td>
-                  <td><code>endpoint</code>、<code>region</code>、<code>bucket</code>、<code>accessKey</code>、<code>secretKey</code>、<code>publicBaseUrl</code>、<code>pathStyle</code></td>
-                </tr>
-                <tr>
-                  <td><code>imgur-oauth</code></td>
-                  <td>以 imgur 帳號的 refresh token 上傳（圖片歸帳號管理，可刪除）</td>
-                  <td><code>clientId</code>、<code>clientSecret</code>、<code>refreshToken</code>、<code>album</code>（選填）</td>
-                </tr>
-                <tr>
-                  <td><code>http</code></td>
-                  <td>通用 HTTP 上傳</td>
-                  <td>見下方設定範例</td>
-                </tr>
-              </tbody>
-            </table>
+{圖片原始位元組}
+
+→ 201 { "url": "https://github.com/user-attachments/assets/{uuid}" }</code></pre>
           </div>
 
-          <h3>通用 HTTP driver 的範圍</h3>
-          <p>一次 HTTP 請求上傳，從回應取出網址。</p>
-          <div class="code-block">
-            <div class="code-header">
-              <span>toml</span>
-              <button type="button" class="copy-btn">複製</button>
-            </div>
-            <pre><code>[sites.example-studio.storage]
-driver = "http"
-url = "https://api.imgbb.com/1/upload"
-method = "POST"
-file_field = "image"
-fields = { key = "${IMGBB_KEY}" }          # 額外表單欄位，可引用環境變數
-headers = {}                               # 額外 header，可引用環境變數
-response = "json"                          # json | text（回應本身就是網址）
-url_pointer = "/data/url"                  # JSON Pointer
-delete_pointer = "/data/delete_url"        # 選填</code></pre>
-          </div>
-
-          <div class="split-cards">
-            <div class="sub-card">
-              <h4>可涵蓋</h4>
-              <p>ImgBB、Chevereto、catbox、sm.ms、Cloudinary unsigned upload、多數自架上傳 API。</p>
-            </div>
-            <div class="sub-card">
-              <h4>不涵蓋（需寫專屬 driver）</h4>
-              <p>要對參數計算簽章（Cloudinary signed、AWS SigV4，後者用 <code>s3</code> driver）、要分多個步驟（先拿 presigned URL 再上傳）、要 OAuth refresh（用 <code>imgur-oauth</code>）。</p>
-            </div>
-          </div>
+          <ul>
+            <li><strong>來源</strong>：與 <code>gh issue create --attach</code>（gh v2.99.0，2026-09-01 起）是同一個端點。它不在 GitHub 官方 REST API 文件中，以 cli/cli 的 <code>internal/attachments/client.go</code> 為參考實作。</li>
+            <li><strong>不依賴 <code>gh</code> 執行檔</strong>：Rust（reqwest）與 PHP（PSR-18）各自直接打這個端點；開 issue 走正式 REST API <code>POST /repos/{owner}/{repo}/issues</code>。</li>
+            <li><strong><code>repository_id</code></strong>：啟動時以 <code>GET /repos/{owner}/{repo}</code> 取得並快取。</li>
+            <li><strong>憑證</strong>：只接受使用者 token（classic 或 fine-grained PAT），且該帳號對 repo 要有 write 權限。GitHub App installation token 會得到 404；權限不足也是 404，不是 403。</li>
+            <li><strong>檔名</strong>：由核心產生 <code>{ULID}.{ext}</code>，不含使用者可控字串。</li>
+            <li><strong>限制</strong>：GitHub 端圖片上限 10 MB（本專案預設 5 MB）；不支援 GitHub Enterprise Server；被限流時回 429 並帶 <code>Retry-After</code>。</li>
+            <li><strong>可見度</strong>：附件跟隨 repo 的可見度（尚未實測，見 <a href="#sec-17">§17</a>）；目標 repo 若是公開的，擷圖就是公開的。relay 啟動時偵測到公開 repo 會印警告。</li>
+            <li><strong>無法刪除</strong>：GitHub 沒有刪除附件的 API，網站上也沒有刪除按鈕。誤傳時的處理見 <a href="#sec-15">§15</a>。</li>
+            <li><strong>端點變動的偵測</strong>：conformance 之外另有一個對真實測試 repo 的上傳檢查，端點行為改變時能第一時間發現。</li>
+          </ul>
         </article>
 
         <!-- §12 -->
@@ -1751,6 +1717,8 @@ listen = "0.0.0.0:8080"
 public_base_url = "https://feedback.example-studio.tw"
 database_url = "${DATABASE_URL}"        # sqlite:///data/feedback.db 或 postgres://…
 max_image_bytes = 5242880
+data_dir = "/data"                      # 圖片備份檔放 {data_dir}/pending/
+backup_retention_days = 7               # 沒送成功的備份檔保留天數
 
 [sites.example-studio]
 secret = "${SITE_EXAMPLE_STUDIO_SECRET}"
@@ -1770,16 +1738,7 @@ mask_selectors = []
 ignore_selectors = []
 
 [sites.example-studio.github]
-auth = "pat"                            # pat | app
-token = "${GITHUB_TOKEN}"
-# auth = "app"
-# app_id = 123456
-# installation_id = 7890123
-# private_key_path = "/run/secrets/github-app.pem"
-
-[sites.example-studio.storage]
-driver = "local"
-root = "/data/files"</code></pre>
+token = "${GITHUB_TOKEN}"               # 專用機器帳號的 PAT，限定單一 repo，需 write 權限</code></pre>
           </div>
 
           <p><code>php/laravel</code> 以 <code>config/feedback-widget.php</code> 提供同義設定（一個站台，不需要 <code>sites</code> 層）。</p>
@@ -1885,21 +1844,21 @@ root = "/data/files"</code></pre>
                 </tr>
                 <tr>
                   <td>relay 語言</td>
-                  <td>Rust：axum、tokio、octocrab、jsonwebtoken、sqlx、rust-s3、reqwest</td>
+                  <td>Rust：axum、tokio、octocrab、jsonwebtoken、sqlx、reqwest</td>
                   <td>單一執行檔、省資源；作者想用 Rust 練功</td>
                   <td>TypeScript＋Hono（可共用型別，但不符合目標）</td>
                 </tr>
                 <tr>
                   <td>GitHub 驗證</td>
-                  <td>先用 PAT，目標換 GitHub App</td>
-                  <td>PAT 能最快上線；App 有 bot 身分、短效 token、細粒度權限</td>
-                  <td>只用 PAT（綁個人、會過期）</td>
+                  <td>PAT：專用機器帳號的 fine-grained PAT，限定單一 repo</td>
+                  <td>附件上傳端點只接受使用者 token；專用帳號讓 issue 有固定的 bot 身分</td>
+                  <td>GitHub App（installation token 傳不了附件，GitHub 開放後再評估）</td>
                 </tr>
                 <tr>
                   <td>圖片</td>
-                  <td>可抽換的 driver，預設 local</td>
-                  <td>issue 要公開網址；自架的圖可以自己刪除</td>
-                  <td>把圖 commit 進 repo（和程式碼耦合，已否決）</td>
+                  <td>上傳成 GitHub 附件</td>
+                  <td>不必架圖床、不必公開檔案、少一套金鑰；圖片跟隨 repo 可見度</td>
+                  <td>可抽換的圖床 driver（local、S3、imgur、通用 HTTP：圖片必須是公開網址，已否決，見 ADR 0001）；把圖 commit 進 repo（和程式碼耦合，已否決）</td>
                 </tr>
                 <tr>
                   <td>資料庫</td>
@@ -1925,12 +1884,15 @@ root = "/data/files"</code></pre>
             <h2>安全與個資</h2>
           </div>
           <ul>
-            <li>GitHub token 與圖床金鑰只存在後端；widget 原始碼與回應都不得包含它們。</li>
+            <li>GitHub token 只存在後端；widget 原始碼與回應都不得包含它們。</li>
             <li>中繼模式：檢查 token 簽章、<code>aud</code>、<code>exp</code> 與 <code>jti</code> 防重放；CORS 只允許站台列出的 origin，並同時檢查 <code>Origin</code> header。</li>
             <li>內嵌模式：用宿主 session 加 CSRF 驗證，並在伺服器端再判斷一次權限，不信任前端。</li>
             <li>上傳限制：預設 5 MB；以檔頭 magic bytes 驗證是 PNG、JPEG 或 WebP，不採信宿主宣告的 MIME；尺寸上限 8192×8192。</li>
             <li>限流：每位使用者每分鐘 5 次（可設定），超過時回 429。</li>
-            <li>圖片是公開網址：在遮蔽功能完成前靠送出前的勾選確認；送出紀錄保留刪除資訊，提供 <code>relay-server delete &lt;id&gt;</code> 指令來刪圖並在 issue 留言註記。</li>
+            <li>圖片是 GitHub 附件，上傳後無法自行刪除：在遮蔽功能完成前靠送出前的勾選確認。誤傳個資時，先編輯 issue 移除圖片那一行，再向 GitHub 客服申請刪除該附件網址。</li>
+            <li>目標 repo 建議設為私有；公開 repo 的擷圖等於永久公開，relay 啟動時會印警告。</li>
+            <li>圖片備份檔只在開單成功前存在，放在不對外的目錄，最長保留 7 天（<a href="#sec-10">§10</a>）。</li>
+            <li>PAT 用專用機器帳號產生，限定單一 repo、設定到期日；到期前要換新並更新環境變數。</li>
             <li>issue 本文的跳脫規則見 <a href="#sec-8">§8</a>。</li>
             <li>送出紀錄含 email，保存期限由站台設定（預設 365 天），到期時清空 <code>reporter_email</code> 與 <code>payload_json</code>。</li>
           </ul>
@@ -1960,7 +1922,7 @@ root = "/data/files"</code></pre>
                 </tr>
                 <tr>
                   <td><strong>M1</strong></td>
-                  <td>widget（loader＋editor：snapdom＋marker.js＋表單、ignore 清單、手動塗黑、上傳備援）；relay（token、CORS、local driver、PAT、SQLite、issue 格式、限流）；<code>examples/</code> 純 HTML＋docker-compose</td>
+                  <td>widget（loader＋editor：snapdom＋marker.js＋表單、ignore 清單、手動塗黑、上傳備援）；relay（token、CORS、GitHub 附件上傳、PAT、圖片備份檔、SQLite、issue 格式、限流）；<code>examples/</code> 純 HTML＋docker-compose</td>
                   <td>在範例頁送出一張含圖的 issue 到測試 repo；Rust 通過 conformance</td>
                 </tr>
                 <tr>
@@ -1970,12 +1932,12 @@ root = "/data/files"</code></pre>
                 </tr>
                 <tr>
                   <td><strong>M3</strong></td>
-                  <td><code>s3</code>、<code>imgur-oauth</code>、<code>http</code> drivers；失敗重試背景工作；<code>delete</code> 指令</td>
-                  <td>每個 driver 都有整合測試（用 mock server 或 MinIO）</td>
+                  <td>失敗重試背景工作；備份檔到期清除；公開 repo 啟動警告；對真實測試 repo 的附件上傳檢查</td>
+                  <td>以 mock server 模擬上傳失敗與開單失敗，重試與清除都有整合測試</td>
                 </tr>
                 <tr>
                   <td><strong>M4</strong></td>
-                  <td>GitHub App 驗證；自動 mask 覆蓋與個資偵測；WordPress plugin、Drupal module</td>
+                  <td>自動 mask 覆蓋與個資偵測；WordPress plugin、Drupal module</td>
                   <td>依各自的 issue 驗收</td>
                 </tr>
               </tbody>
@@ -1995,9 +1957,9 @@ root = "/data/files"</code></pre>
             <li><strong>marker.js 3</strong>：vanilla 用法、工具清單（螢光筆、塗黑矩形、文字）、匯出 PNG 的 API、Shadow DOM 內能否正常運作、linkware 授權條款原文。</li>
             <li><strong>snapdom</strong>：<code>exclude</code>／<code>filter</code> 選項的實際名稱與行為、能否只擷取可視區、跨網域圖片與字型的處理、失敗時的錯誤型態。</li>
             <li><strong>html-to-image</strong>：作為退路時的 <code>filter</code> 行為。</li>
-            <li><strong>octocrab</strong>：GitHub App installation token 的取得與快取方式。</li>
-            <li><strong>rust-s3</strong>：對 R2 和 path-style 的支援。</li>
-            <li><strong>imgur API</strong>：目前 OAuth app 註冊是否開放、上傳頻率限制、商業用途條款。</li>
+            <li><strong>GitHub 附件端點</strong>：fine-grained PAT 需要勾選哪些 repo 權限才能上傳；<code>Authorization</code> 用 <code>token</code> 或 <code>Bearer</code> 是否都可以。</li>
+            <li><strong>GitHub 附件可見度</strong>：私有 repo 的附件網址，未登入或沒有 repo 權限的人是否打不開（實測）。</li>
+            <li><strong>GitHub 附件刪除</strong>：向 GitHub 客服申請刪除的實際流程與所需時間。</li>
             <li><strong>UA 解析</strong>：選用 <code>ua-parser-js</code>（注意 v2 改為 AGPL 授權）或 <code>bowser</code>，或只用 <code>navigator.userAgentData</code>；先確認授權。</li>
           </ul>
         </article>
@@ -2006,7 +1968,7 @@ root = "/data/files"</code></pre>
   </div>
 
   <footer class="footer">
-    <span>來源規格：SPEC.md（草案 v0.1，2026-11-23）</span>
+    <span>來源規格：SPEC.md（草案 v0.2，2026-11-27）</span>
     <span>單檔離線規格簡報頁 · 支援系統亮色／暗色模式</span>
   </footer>
 

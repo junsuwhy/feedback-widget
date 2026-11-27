@@ -1,6 +1,7 @@
 # feedback-widget 規格與策略
 
-> 狀態：草案 v0.1（2026-11-23）。尚未動工，本文件是開發前的共識紀錄。
+> 狀態：草案 v0.2（2026-11-27）。尚未動工，本文件是開發前的共識紀錄。
+> v0.2：圖片改為直接上傳成 GitHub 附件，移除圖床 driver 與 GitHub App 驗證（見 `docs/adr/0001-images-as-github-attachments.md`）。
 > 佔位網域：`feedback.example-studio.tw`、宿主站 `www.example-studio.tw`，部署時再替換。
 
 ## 1. 目標與非目標
@@ -18,7 +19,7 @@
 
 - **與宿主低耦合**：widget 不認識 Laravel／Drupal／WordPress／Rust；宿主只負責「判斷誰能用」和「提供 endpoint 與驗證方式」。
 - **不重造輪子**：擷圖用 snapdom、標註用 marker.js 3、GitHub 用各語言成熟 client。
-- **金鑰不進瀏覽器**：GitHub token、圖床金鑰只存在後端。
+- **金鑰不進瀏覽器**：GitHub token 只存在後端。
 - **同一份規格、多套實作**：Rust 中繼服務與各語言 framework package 以 `spec/` 的 HTTP 規格與 conformance 測試資料為準。
 
 ### 非目標（本版不做）
@@ -28,6 +29,7 @@
 - 非管理員（一般訪客）回報。
 - 在 issue 上指派 assignee（回報人多半沒有 GitHub 帳號，寫在本文）。
 - npm／Packagist 正式發佈（初期以 GitHub release、VCS repository 引用）。
+- GitHub Enterprise Server（沒有附件上傳端點，見 §11）。
 
 ## 2. 架構總覽
 
@@ -40,10 +42,10 @@
  ┌─────────────────────────┐                ┌──────────────────────────────────┐
  │ framework package       │  簽短效 token   │ relay-server (axum)              │
  │  - 判斷管理員            │ ─────────────▶ │  - 驗 token / CORS / 限流         │
- │  - 輸出 <script>         │   (由 widget   │  - ImageStore driver → 圖片 URL   │
+ │  - 輸出 <script>         │   (由 widget   │  - 圖片上傳為 GitHub 附件         │
  │  - 簽 HS256 token        │    帶過去)     │  - GitHub client → 開 issue       │
  └─────────────────────────┘                │  - SQLite/Postgres 送出紀錄       │
-          │ 載入 widget.js（由 relay 提供）  │  - 提供 /widget.js、/f/{key}      │
+          │ 載入 widget.js（由 relay 提供）  │  - 提供 /widget.js                │
           ▼                                 └──────────────────────────────────┘
  ┌─────────────────────────┐   POST /v1/feedback (Bearer token)   ▲
  │ widget（瀏覽器）         │ ─────────────────────────────────────┘
@@ -55,7 +57,7 @@
  ┌──────────────────────────────────────────────┐
  │ framework package（例如 php/laravel）          │
  │  - route + middleware：session 判斷管理員+CSRF │
- │  - php/core：驗證輸入、ImageStore、GitHub 開單 │
+ │  - php/core：驗證輸入、上傳附件、GitHub 開單   │
  │  - 宿主資料庫存送出紀錄                         │
  └──────────────────────────────────────────────┘
           ▲  POST {host}/_feedback/v1/feedback（session cookie + X-CSRF-TOKEN）
@@ -68,16 +70,15 @@
 
 | 情境 | 建議模式 |
 | --- | --- |
-| 多個站共用、想集中管理圖片與 GitHub 憑證 | 中繼模式 |
+| 多個站共用、想集中管理 GitHub 憑證 | 中繼模式 |
 | 單一站、不想多維護一個服務 | 內嵌模式 |
-| 想用自架圖床（local driver 公開網址） | 中繼模式（relay 本身就是圖床），或內嵌模式存宿主 public disk |
 
 ## 3. Repo 結構（monorepo）
 
 ```
 widget/            TypeScript：loader（浮動按鈕）與 editor（擷圖＋標註＋表單）
-relay/core/        Rust lib：輸入驗證、token 驗簽、ImageStore drivers、GitHub client、issue 格式
-relay/server/      Rust bin：axum HTTP、DB（SQLite／Postgres）、限流、靜態提供 widget 與 local 圖片、Dockerfile
+relay/core/        Rust lib：輸入驗證、token 驗簽、GitHub 附件上傳與開單、issue 格式
+relay/server/      Rust bin：axum HTTP、DB（SQLite／Postgres）、限流、靜態提供 widget、圖片備份檔與重試、Dockerfile
 php/core/          框架無關 PHP 核心（PSR-7／PSR-17／PSR-18）：與 relay/core 同職責
 php/laravel/       Laravel adapter：ServiceProvider、route、middleware、Blade directive、migration
 spec/              openapi.yaml、token.md、db-schema.md、masking.md、conformance/
@@ -107,10 +108,10 @@ WordPress plugin、Drupal module 之後以 `php/core` 為基礎各做一層薄 a
 ### 4.2 relay（Rust 中繼服務）
 
 - 驗 token（§6）、CORS（只允許站台設定的 origin）、請求大小與圖片格式檢查。
-- 依站台設定呼叫 ImageStore driver 上傳圖片，取得公開網址。
-- 組 issue 本文（§8），以 PAT 或 GitHub App 開 issue、加 label。
-- 寫入送出紀錄（§10），限流、失敗重試。
-- 提供 `/widget.js`（loader）、`/widget/editor.<hash>.js`、`/f/{key}`（local driver 圖片）、`/healthz`。
+- 把圖片上傳成目標 repo 的 GitHub 附件，取得附件網址（§11）。
+- 組 issue 本文（§8），以 PAT 開 issue、加 label。
+- 寫入送出紀錄與圖片備份檔（§10），限流、失敗重試。
+- 提供 `/widget.js`（loader）、`/widget/editor.<hash>.js`、`/healthz`。
 
 ### 4.3 framework package（以 php 為例）
 
@@ -208,13 +209,12 @@ widget 開啟光箱時取得站台設定。
 | 413 | `image_too_large` | 提示壓縮或改 JPEG |
 | 422 | `consent_required`／`unsupported_image` | 顯示訊息 |
 | 429 | `rate_limited`（帶 `Retry-After`） | 顯示等待秒數 |
-| 502 | `storage_failed`／`github_failed` | 保留表單，可重試；紀錄已存，後端也會重試 |
+| 502 | `upload_failed`／`github_failed` | 保留表單，可重試；紀錄已存，後端也會重試 |
 
 ### 5.4 靜態資源（僅中繼模式）
 
 - `GET /widget.js`：loader，`Cache-Control: max-age=300`。
 - `GET /widget/editor.<hash>.js`：editor，immutable 長快取。
-- `GET /f/{key}`：local driver 圖片，`X-Robots-Tag: noindex`、不開目錄列表。
 - `GET /healthz`。
 
 ## 6. Token（中繼模式）
@@ -336,7 +336,7 @@ FeedbackWidget.open()                             // 宿主可自訂觸發點
 - 使用者輸入的 `@xxx` 轉成 `@​xxx`，避免通知不相干的 GitHub 使用者。
 - 表格內的值跳脫 `|` 與換行，HTML 實體化 `<`、`>`。
 - code fence 長度取「內容中最長連續反引號 + 1」（至少 3）。
-- 圖片網址只接受 driver 回傳的 `https://` 網址。
+- 圖片網址只接受 GitHub 附件端點回傳的 `https://` 網址。
 - 尾端 HTML 註解帶送出紀錄 id，方便日後從 issue 反查。email 不寫入 issue（只存送出紀錄），除非站台設定 `showReporterEmail: true`。
 
 ## 9. 個資遮蔽約定
@@ -368,7 +368,8 @@ FeedbackWidget.open()                             // 宿主可自訂觸發點
 | `title`、`type` | text |  |
 | `page_url` | text |  |
 | `payload_json` | text | 完整 payload（不含圖片） |
-| `image_driver`、`image_url`、`image_delete_ref` | text | 刪除資訊：local 路徑、S3 key、imgur deletehash、通用 HTTP 刪除網址 |
+| `image_url` | text | GitHub 附件網址，上傳成功後才有值 |
+| `image_backup_path` | text | 圖片備份檔路徑；開單成功或備份到期刪除後清空 |
 | `status` | text | `pending`／`created`／`failed` |
 | `issue_number`、`issue_url` | int／text |  |
 | `attempts`、`last_error` | int／text | 重試用 |
@@ -376,46 +377,40 @@ FeedbackWidget.open()                             // 宿主可自訂觸發點
 
 另有 `token_jti`（防重放，可定期清除過期資料）。限流用記憶體計數器（單機）即可，不寫資料庫。
 
-流程：收件 → 寫 `pending` → 上傳圖片 → 開 issue → 更新為 `created`。GitHub 或圖床失敗時記為 `failed` 並回 502；relay 背景工作以指數退避重試 `failed`（最多 5 次），成功時不會重複開單（以紀錄 id 判斷）。
+流程：收件 → 圖片存成備份檔並寫 `pending` → 上傳成 GitHub 附件（成功就記下 `image_url`）→ 開 issue → 更新為 `created` 並立刻刪除備份檔。
 
-## 11. 圖床 driver
+- 上傳附件或開 issue 失敗時記為 `failed` 並回 502；背景工作以指數退避重試 `failed`（最多 5 次），成功時不會重複開單（以紀錄 id 判斷）。
+- 紀錄已有 `image_url` 時只重試開單，不重傳圖片：附件上傳後無法刪除，重傳會留下沒人引用的檔案。
+- 5 次都失敗後不再自動重試，備份檔留到收件滿 7 天（`backup_retention_days`，可設定）才刪除，供人工補救；紀錄維持 `failed`。
+- 備份檔位置：relay 放 `{data_dir}/pending/`；內嵌模式放宿主的私有磁碟（例如 Laravel `local` disk，不是 `public`）。一律不對外提供，檔名為 `{ULID}.{ext}`。
+- 系統裡因此只會留著「還沒成功送出」的圖片。
 
-介面（Rust trait／PHP interface 同義）：
+## 11. 圖片附件（GitHub attachments）
+
+圖片直接上傳成目標 repo 的 GitHub 附件，不經任何圖床；issue 本文引用回傳的附件網址。決策背景與取捨見 `docs/adr/0001-images-as-github-attachments.md`。
 
 ```
-put(bytes, mime, key) -> { url: https URL, deleteRef: string|null }
-delete(deleteRef) -> ()
+POST https://uploads.github.com/user-attachments/assets
+       ?name={ULID}.{ext}&content_type={mime}&repository_id={repo 的數字 id}
+Authorization: token {PAT}
+Content-Type: application/octet-stream
+Content-Length: {bytes}
+Accept: application/vnd.github+json
+
+{圖片原始位元組}
+
+→ 201 { "url": "https://github.com/user-attachments/assets/{uuid}" }
 ```
 
-`key` 由核心產生：`{site}/{yyyy}/{mm}/{ULID}.{ext}`，不含使用者可控字串。
-
-GitHub 要顯示 issue 圖片，必須由 camo 代理抓得到，所以**圖片一定是公開網址**；安全性只靠網址無法猜測，以及可以事後刪除。
-
-| driver | 說明 | 設定 |
-| --- | --- | --- |
-| `local` | relay：存在磁碟，由 `/f/{key}` 公開提供；內嵌模式：存宿主 public disk（例如 Laravel `public` disk） | `root`、`publicBaseUrl` |
-| `s3` | S3 相容（AWS S3、Cloudflare R2、Garage、MinIO），公開 bucket 或公開網域前綴 | `endpoint`、`region`、`bucket`、`accessKey`、`secretKey`、`publicBaseUrl`、`pathStyle` |
-| `imgur-oauth` | 以 imgur 帳號的 refresh token 上傳（圖片歸帳號管理，可刪除） | `clientId`、`clientSecret`、`refreshToken`、`album`（選填） |
-| `http` | 通用 HTTP 上傳 | 見下 |
-
-通用 HTTP driver 的範圍：一次 HTTP 請求上傳，從回應取出網址。
-
-```toml
-[sites.example-studio.storage]
-driver = "http"
-url = "https://api.imgbb.com/1/upload"
-method = "POST"
-file_field = "image"
-fields = { key = "${IMGBB_KEY}" }          # 額外表單欄位，可引用環境變數
-headers = {}                               # 額外 header，可引用環境變數
-response = "json"                          # json | text（回應本身就是網址）
-url_pointer = "/data/url"                  # JSON Pointer
-delete_pointer = "/data/delete_url"        # 選填
-```
-
-可涵蓋：ImgBB、Chevereto、catbox、sm.ms、Cloudinary unsigned upload、多數自架上傳 API。
-
-不涵蓋（需寫專屬 driver）：要對參數計算簽章（Cloudinary signed、AWS SigV4，後者用 `s3` driver）、要分多個步驟（先拿 presigned URL 再上傳）、要 OAuth refresh（用 `imgur-oauth`）。
+- **來源**：與 `gh issue create --attach`（gh v2.99.0，2026-09-01 起）是同一個端點。它不在 GitHub 官方 REST API 文件中，以 cli/cli 的 `internal/attachments/client.go` 為參考實作。
+- **不依賴 `gh` 執行檔**：Rust（reqwest）與 PHP（PSR-18）各自直接打這個端點；開 issue 走正式 REST API `POST /repos/{owner}/{repo}/issues`。
+- **`repository_id`**：啟動時以 `GET /repos/{owner}/{repo}` 取得並快取。
+- **憑證**：只接受使用者 token（classic 或 fine-grained PAT），且該帳號對 repo 要有 write 權限。GitHub App installation token 會得到 404；權限不足也是 404，不是 403。
+- **檔名**：由核心產生 `{ULID}.{ext}`，不含使用者可控字串。
+- **限制**：GitHub 端圖片上限 10 MB（本專案預設 5 MB）；不支援 GitHub Enterprise Server；被限流時回 429 並帶 `Retry-After`。
+- **可見度**：附件跟隨 repo 的可見度（尚未實測，見 §17）；目標 repo 若是公開的，擷圖就是公開的。relay 啟動時偵測到公開 repo 會印警告。
+- **無法刪除**：GitHub 沒有刪除附件的 API，網站上也沒有刪除按鈕。誤傳時的處理見 §15。
+- **端點變動的偵測**：conformance 之外另有一個對真實測試 repo 的上傳檢查，端點行為改變時能第一時間發現。
 
 ## 12. 設定檔（relay）
 
@@ -427,6 +422,8 @@ listen = "0.0.0.0:8080"
 public_base_url = "https://feedback.example-studio.tw"
 database_url = "${DATABASE_URL}"        # sqlite:///data/feedback.db 或 postgres://…
 max_image_bytes = 5242880
+data_dir = "/data"                      # 圖片備份檔放 {data_dir}/pending/
+backup_retention_days = 7               # 沒送成功的備份檔保留天數
 
 [sites.example-studio]
 secret = "${SITE_EXAMPLE_STUDIO_SECRET}"
@@ -446,16 +443,7 @@ mask_selectors = []
 ignore_selectors = []
 
 [sites.example-studio.github]
-auth = "pat"                            # pat | app
-token = "${GITHUB_TOKEN}"
-# auth = "app"
-# app_id = 123456
-# installation_id = 7890123
-# private_key_path = "/run/secrets/github-app.pem"
-
-[sites.example-studio.storage]
-driver = "local"
-root = "/data/files"
+token = "${GITHUB_TOKEN}"               # 專用機器帳號的 PAT，限定單一 repo，需 write 權限
 ```
 
 `php/laravel` 以 `config/feedback-widget.php` 提供同義設定（一個站台，不需要 `sites` 層）。
@@ -487,20 +475,23 @@ root = "/data/files"
 | 擷圖 | snapdom，失敗時退回 html-to-image | 不跳權限視窗、可在擷圖前排除和遮蔽 DOM | `getDisplayMedia`（像素精準，但每次要選分頁、只能事後遮蔽）、html2canvas（較舊、較慢） |
 | 標註 | marker.js 3 | 不依賴框架，工具最齊全；linkware 授權（免費版有小 logo，可付費拿掉），已確認可接受 | Filerobot（React、bundle 大）、tui-image-editor（停止維護）、fabric.js／Konva（要自己做 UI） |
 | 擴充方式 | Web Component＋Shadow DOM | 和宿主的 CSS、JS 隔離 | iframe（擷不到宿主頁面）、直接插入 DOM（樣式互相干擾） |
-| relay 語言 | Rust：axum、tokio、octocrab、jsonwebtoken、sqlx、rust-s3、reqwest | 單一執行檔、省資源；作者想用 Rust 練功 | TypeScript＋Hono（可共用型別，但不符合目標） |
-| GitHub 驗證 | 先用 PAT，目標換 GitHub App | PAT 能最快上線；App 有 bot 身分、短效 token、細粒度權限 | 只用 PAT（綁個人、會過期） |
-| 圖片 | 可抽換的 driver，預設 local | issue 要公開網址；自架的圖可以自己刪除 | 把圖 commit 進 repo（和程式碼耦合，已否決） |
+| relay 語言 | Rust：axum、tokio、octocrab、jsonwebtoken、sqlx、reqwest | 單一執行檔、省資源；作者想用 Rust 練功 | TypeScript＋Hono（可共用型別，但不符合目標） |
+| GitHub 驗證 | PAT：專用機器帳號的 fine-grained PAT，限定單一 repo | 附件上傳端點只接受使用者 token；專用帳號讓 issue 有固定的 bot 身分 | GitHub App（installation token 傳不了附件，GitHub 開放後再評估） |
+| 圖片 | 上傳成 GitHub 附件 | 不必架圖床、不必公開檔案、少一套金鑰；圖片跟隨 repo 可見度 | 可抽換的圖床 driver（local、S3、imgur、通用 HTTP：圖片必須是公開網址，已否決，見 ADR 0001）；把圖 commit 進 repo（和程式碼耦合，已否決） |
 | 資料庫 | sqlx，SQLite 起步，保留 Postgres 相容 | 不用另外架資料庫，之後可擴充 | 只用 SQLite |
 | PHP 核心 | PSR-7／PSR-18 框架無關核心＋薄 adapter | Laravel、WordPress、Drupal 共用同一份邏輯 | 每個框架各寫一份 |
 
 ## 15. 安全與個資
 
-- GitHub token 與圖床金鑰只存在後端；widget 原始碼與回應都不得包含它們。
+- GitHub token 只存在後端；widget 原始碼與回應都不得包含它們。
 - 中繼模式：檢查 token 簽章、`aud`、`exp` 與 `jti` 防重放；CORS 只允許站台列出的 origin，並同時檢查 `Origin` header。
 - 內嵌模式：用宿主 session 加 CSRF 驗證，並在伺服器端再判斷一次權限，不信任前端。
 - 上傳限制：預設 5 MB；以檔頭 magic bytes 驗證是 PNG、JPEG 或 WebP，不採信宿主宣告的 MIME；尺寸上限 8192×8192。
 - 限流：每位使用者每分鐘 5 次（可設定），超過時回 429。
-- 圖片是公開網址：在遮蔽功能完成前靠送出前的勾選確認；送出紀錄保留刪除資訊，提供 `relay-server delete <id>` 指令來刪圖並在 issue 留言註記。
+- 圖片是 GitHub 附件，上傳後無法自行刪除：在遮蔽功能完成前靠送出前的勾選確認。誤傳個資時，先編輯 issue 移除圖片那一行，再向 GitHub 客服申請刪除該附件網址。
+- 目標 repo 建議設為私有；公開 repo 的擷圖等於永久公開，relay 啟動時會印警告。
+- 圖片備份檔只在開單成功前存在，放在不對外的目錄，最長保留 7 天（§10）。
+- PAT 用專用機器帳號產生，限定單一 repo、設定到期日；到期前要換新並更新環境變數。
 - issue 本文的跳脫規則見 §8。
 - 送出紀錄含 email，保存期限由站台設定（預設 365 天），到期時清空 `reporter_email` 與 `payload_json`。
 
@@ -509,10 +500,10 @@ root = "/data/files"
 | 里程碑 | 內容 | 完成標準 |
 | --- | --- | --- |
 | **M0** | 本規格、`spec/openapi.yaml`、`spec/token.md`、`spec/db-schema.md`、`spec/masking.md`、conformance 測試資料初版 | 經作者 review |
-| **M1** | widget（loader＋editor：snapdom＋marker.js＋表單、ignore 清單、手動塗黑、上傳備援）；relay（token、CORS、local driver、PAT、SQLite、issue 格式、限流）；`examples/` 純 HTML＋docker-compose | 在範例頁送出一張含圖的 issue 到測試 repo；Rust 通過 conformance |
+| **M1** | widget（loader＋editor：snapdom＋marker.js＋表單、ignore 清單、手動塗黑、上傳備援）；relay（token、CORS、GitHub 附件上傳、PAT、圖片備份檔、SQLite、issue 格式、限流）；`examples/` 純 HTML＋docker-compose | 在範例頁送出一張含圖的 issue 到測試 repo；Rust 通過 conformance |
 | **M2** | `php/core`＋`php/laravel`（兩種模式）；`relay/core` 給 Rust 宿主內嵌使用；Postgres 實測 | Laravel 範例站兩種模式都能開單；PHP 通過 conformance |
-| **M3** | `s3`、`imgur-oauth`、`http` drivers；失敗重試背景工作；`delete` 指令 | 每個 driver 都有整合測試（用 mock server 或 MinIO） |
-| **M4** | GitHub App 驗證；自動 mask 覆蓋與個資偵測；WordPress plugin、Drupal module | 依各自的 issue 驗收 |
+| **M3** | 失敗重試背景工作；備份檔到期清除；公開 repo 啟動警告；對真實測試 repo 的附件上傳檢查 | 以 mock server 模擬上傳失敗與開單失敗，重試與清除都有整合測試 |
+| **M4** | 自動 mask 覆蓋與個資偵測；WordPress plugin、Drupal module | 依各自的 issue 驗收 |
 
 第一個宿主（作者的 Laravel 站）的整合，另外在該站 repo 開 issue 處理，不寫進本專案。
 
@@ -521,7 +512,7 @@ root = "/data/files"
 - marker.js 3：vanilla 用法、工具清單（螢光筆、塗黑矩形、文字）、匯出 PNG 的 API、Shadow DOM 內能否正常運作、linkware 授權條款原文。
 - snapdom：`exclude`／`filter` 選項的實際名稱與行為、能否只擷取可視區、跨網域圖片與字型的處理、失敗時的錯誤型態。
 - html-to-image：作為退路時的 `filter` 行為。
-- octocrab：GitHub App installation token 的取得與快取方式。
-- rust-s3：對 R2 和 path-style 的支援。
-- imgur API：目前 OAuth app 註冊是否開放、上傳頻率限制、商業用途條款。
+- GitHub 附件端點：fine-grained PAT 需要勾選哪些 repo 權限才能上傳；`Authorization` 用 `token` 或 `Bearer` 是否都可以。
+- GitHub 附件可見度：私有 repo 的附件網址，未登入或沒有 repo 權限的人是否打不開（實測）。
+- GitHub 附件刪除：向 GitHub 客服申請刪除的實際流程與所需時間。
 - UA 解析：選用 `ua-parser-js`（注意 v2 改為 AGPL 授權）或 `bowser`，或只用 `navigator.userAgentData`；先確認授權。
